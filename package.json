@@ -1,6 +1,21 @@
 {
   "name": "@iad-os/react-ghost-auth",
   "version": "0.1.4",
+  "maintainers": [
+    {
+      "name": "Daniele Fiungo",
+      "email": "daniele.fiungo@iad2.it"
+    },
+    {
+      "name": "Nicola Vurchio",
+      "email": "nicola.vurchio@iad2.it"
+    },
+    {
+      "name": "Irene La Bollita",
+      "email": "irene.labollita@iad2.it"
+    }
+  ],
+  "author": "Nicola Vurchio <nicola.vurchio@iad2.it>",
   "main": "build/index.js",
   "module": "build/index.es.js",
   "jsnext:main": "build/index.es.js",
@@ -37,5 +52,9 @@
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iad-os/react-ghost-auth.git"
   }
 }
