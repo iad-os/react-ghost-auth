@@ -1,6 +1,6 @@
 {
-  "name": "react-ghost-auth",
-  "version": "0.1.1",
+  "name": "@iad-os/react-ghost-auth",
+  "version": "0.1.3",
   "main": "build/index.js",
   "module": "build/index.es.js",
   "jsnext:main": "build/index.es.js",
