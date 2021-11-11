@@ -21,14 +21,17 @@ export function generateRandomState() {
 }
 
 // Return the base64-urlencoded sha256 hash for the PKCE challenge
-export function pkceChallengeFromVerifier(v: string) {
-  return base64urlencode(sha256(v));
+export function pkceChallengeFromVerifier(verify: string) {
+  return base64urlencode(sha256(verify));
 }
 
-export function base64urlencode(str: any) {
-  return str
-    .toString('base64')
+export function base64urlencode(buffer: Buffer) {
+  return window
+    .btoa(String.fromCharCode(...buffer))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
+}
+export function base64decode(str: string) {
+  return JSON.parse(window.atob(str));
 }

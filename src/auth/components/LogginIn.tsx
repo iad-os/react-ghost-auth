@@ -5,11 +5,11 @@ type Props = {
   children: React.ReactNode;
 };
 
-function Anonymous(props: Props) {
+function LogginIn(props: Props) {
   const { children } = props;
   const { isAuthenticated, status } = useAuthentication();
 
   return <div>{!isAuthenticated() && status === 'LOGGING' && children}</div>;
 }
 
-export default Anonymous;
+export default LogginIn;

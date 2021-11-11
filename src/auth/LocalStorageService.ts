@@ -3,11 +3,13 @@ import { TokenResponse } from './models/TokenResponse';
 const HOSTNAME = window.location.hostname;
 const ACCESS_TOKEN = `${HOSTNAME}_access_token`;
 const REFRESH_TOKEN = `${HOSTNAME}_refresh_token`;
+const ID_TOKEN = `${HOSTNAME}_id_token`;
 const STATE = `${HOSTNAME}_state`;
 const CODE_VERIFIER = `${HOSTNAME}_code_verifier`;
 export function setToken(tokenObj: TokenResponse) {
   localStorage.setItem(ACCESS_TOKEN, tokenObj.access_token);
   localStorage.setItem(REFRESH_TOKEN, tokenObj.refresh_token);
+  localStorage.setItem(ID_TOKEN, tokenObj.id_token);
 }
 
 export function getAccessToken() {
@@ -17,15 +19,20 @@ export function getAccessToken() {
 export function getRefreshToken() {
   return localStorage.getItem(REFRESH_TOKEN);
 }
+export function getIdToken() {
+  return localStorage.getItem(ID_TOKEN);
+}
 
 export function clearToken() {
   localStorage.removeItem(ACCESS_TOKEN);
   localStorage.removeItem(REFRESH_TOKEN);
+  localStorage.removeItem(ID_TOKEN);
 }
 
 export function clear() {
   localStorage.removeItem(ACCESS_TOKEN);
   localStorage.removeItem(REFRESH_TOKEN);
+  localStorage.removeItem(ID_TOKEN);
   localStorage.removeItem(STATE);
   localStorage.removeItem(CODE_VERIFIER);
 }

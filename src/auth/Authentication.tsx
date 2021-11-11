@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 
 import {
+  base64decode,
   generateCodeVerifier,
   generateRandomState,
   pkceChallengeFromVerifier,
@@ -18,6 +19,7 @@ import {
   setState as setStateLocalStorage,
   setCodeVerifier,
   setToken,
+  getIdToken,
 } from './LocalStorageService';
 import { TokenResponse } from './models/TokenResponse';
 
@@ -47,6 +49,7 @@ type AuthCtxType = {
   logout: () => void;
   isAuthenticated: () => boolean;
   status: 'LOGIN' | 'LOGGING' | 'LOGGED';
+  userInfo: () => { [key: string]: any } | undefined;
 };
 
 const AutenticationContext = React.createContext<AuthCtxType>(
@@ -170,6 +173,15 @@ export default function AuthenticationProvider(_props: {
     return !!getAccessToken();
   };
 
+  const userInfo: AuthCtxType['userInfo'] = () => {
+    const idToken = getIdToken();
+    if (idToken) {
+      const [_, payload] = idToken.split('.');
+      return base64decode(payload);
+    }
+    return undefined;
+  };
+
   return (
     <AutenticationContext.Provider
       value={{
@@ -177,6 +189,7 @@ export default function AuthenticationProvider(_props: {
         logout,
         isAuthenticated,
         status,
+        userInfo,
       }}
     >
       {_props.children}
@@ -206,7 +219,7 @@ function initFlowUrl(init: InitFlowUrlType) {
 }
 
 export function useAuthentication() {
-  const { login, logout, isAuthenticated, status } =
+  const { login, logout, isAuthenticated, status, userInfo } =
     useContext(AutenticationContext);
 
   return {
@@ -214,5 +227,6 @@ export function useAuthentication() {
     logout,
     isAuthenticated,
     status,
+    userInfo,
   };
 }
