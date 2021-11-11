@@ -1,27 +1,26 @@
-import React, { useContext, useEffect, useState } from 'react';
-
-import {
-  base64decode,
-  generateCodeVerifier,
-  generateRandomState,
-  pkceChallengeFromVerifier,
-} from './utils';
-import queryString from 'query-string';
 import { AxiosStatic } from 'axios';
+import queryString from 'query-string';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { interceptor } from './interceptor';
 import {
   clear,
   clearCodeVerifierAndSate,
   getAccessToken,
   getCodeVerifier,
+  getIdToken,
   getRefreshToken,
   getState,
-  setState as setStateLocalStorage,
   setCodeVerifier,
+  setState as setStateLocalStorage,
   setToken,
-  getIdToken,
 } from './LocalStorageService';
 import { TokenResponse } from './models/TokenResponse';
+import {
+  base64decode,
+  generateCodeVerifier,
+  generateRandomState,
+  pkceChallengeFromVerifier,
+} from './utils';
 
 export type AuthenticationOptions = {
   serviceUrl: string;
@@ -44,12 +43,15 @@ type InitFlowUrlType = {
   code_challenge_method: 'S256';
 };
 
+type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
+
 type AuthCtxType = {
   login: () => void;
   logout: () => void;
   isAuthenticated: () => boolean;
-  status: 'LOGIN' | 'LOGGING' | 'LOGGED';
+  status: EStatus;
   userInfo: () => { [key: string]: any } | undefined;
+  updateStatus: (status: EStatus) => void;
 };
 
 const AutenticationContext = React.createContext<AuthCtxType>(
@@ -78,7 +80,7 @@ export default function AuthenticationProvider(_props: {
   } = _props.options;
 
   const [status, setStatus] = useState<AuthCtxType['status']>(
-    !!getState() ? 'LOGGING' : 'LOGIN'
+    !!getState() ? 'LOGGING' : 'INIT'
   );
 
   useEffect(() => {
@@ -182,6 +184,11 @@ export default function AuthenticationProvider(_props: {
     return undefined;
   };
 
+  const updateStatus = useCallback(
+    (status: EStatus) => setStatus(status),
+    [status]
+  );
+
   return (
     <AutenticationContext.Provider
       value={{
@@ -190,6 +197,7 @@ export default function AuthenticationProvider(_props: {
         isAuthenticated,
         status,
         userInfo,
+        updateStatus,
       }}
     >
       {_props.children}
@@ -219,14 +227,5 @@ function initFlowUrl(init: InitFlowUrlType) {
 }
 
 export function useAuthentication() {
-  const { login, logout, isAuthenticated, status, userInfo } =
-    useContext(AutenticationContext);
-
-  return {
-    login,
-    logout,
-    isAuthenticated,
-    status,
-    userInfo,
-  };
+  return useContext(AutenticationContext);
 }
