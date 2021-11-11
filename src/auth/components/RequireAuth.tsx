@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthentication } from '../Authentication';
+import LoggedIn from './LoggedIn';
 
 type Props = {
-  authRequired: (() => Promise<boolean>) | boolean;
+  authRequired?: (() => Promise<boolean>) | boolean;
   children: React.ReactNode;
 };
 
 function RequireAuth(props: Props) {
-  const { authRequired: _authRequired, children } = props;
+  const { authRequired: _authRequired = true, children } = props;
 
   const { status, updateStatus, isAuthenticated } = useAuthentication();
 
@@ -29,9 +30,8 @@ function RequireAuth(props: Props) {
 
   return (
     <>
-      {((authRequired && isAuthenticated()) || !authRequired) && (
-        <>{children}</>
-      )}
+      {authRequired && <LoggedIn>{children}</LoggedIn>}
+      {!authRequired && <>{children}</>}
     </>
   );
 }
