@@ -1,8 +1,8 @@
-import axios from 'axios';
+import axios, { AxiosStatic } from 'axios';
 import { getAccessToken } from './LocalStorageService';
 import { TokenResponse } from './models/TokenResponse';
 export function interceptor(
-  realm: string,
+  axios: AxiosStatic,
   serviceUrl: string,
   refreshToken: () => Promise<TokenResponse>
 ) {

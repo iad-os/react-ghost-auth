@@ -6,7 +6,7 @@ import {
   pkceChallengeFromVerifier,
 } from './utils';
 import queryString from 'query-string';
-import axios from 'axios';
+import { AxiosStatic } from 'axios';
 import { interceptor } from './interceptor';
 import {
   clear,
@@ -54,12 +54,15 @@ const AutenticationContext = React.createContext<AuthCtxType>(
 );
 
 export default function AuthenticationProvider(_props: {
+  axios: AxiosStatic;
   options: AuthenticationOptions;
   children: React.ReactNode;
 }) {
   const redirect_uri = `${window.location.protocol}//${
     window.location.hostname
   }${window.location.port !== '' ? `:${window.location.port}` : ''}`;
+
+  const { axios } = _props;
 
   const {
     client_id,
@@ -76,7 +79,7 @@ export default function AuthenticationProvider(_props: {
   );
 
   useEffect(() => {
-    interceptor(realm, serviceUrl, refreshToken);
+    interceptor(axios, serviceUrl, refreshToken);
 
     const code = queryString.parse(window.location.search).code;
     const stateLocalStorage = getState();
