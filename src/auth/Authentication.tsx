@@ -23,12 +23,13 @@ import {
 } from './utils';
 
 export type AuthenticationOptions = {
-  serviceUrl: string;
+  serviceUrl?: string;
   authorization_endpoint: string;
   token_endpoint: string;
   client_id: string;
   requested_scopes: string;
   redirect_uri: string;
+  redirect_logout_uri?: string;
   end_session_endpoint: string;
   realm: string;
 };
@@ -63,10 +64,6 @@ export default function AuthenticationProvider(_props: {
   options: AuthenticationOptions;
   children: React.ReactNode;
 }) {
-  const redirect_uri = `${window.location.protocol}//${
-    window.location.hostname
-  }${window.location.port !== '' ? `:${window.location.port}` : ''}`;
-
   const { axios } = _props;
 
   const {
@@ -77,6 +74,8 @@ export default function AuthenticationProvider(_props: {
     end_session_endpoint,
     realm,
     serviceUrl,
+    redirect_uri,
+    redirect_logout_uri,
   } = _props.options;
 
   const [status, setStatus] = useState<AuthCtxType['status']>(
@@ -84,7 +83,7 @@ export default function AuthenticationProvider(_props: {
   );
 
   useEffect(() => {
-    interceptor(axios, serviceUrl, refreshToken);
+    interceptor(axios, serviceUrl ?? '', refreshToken);
 
     const code = queryString.parse(window.location.search).code;
     const stateLocalStorage = getState();
@@ -121,7 +120,7 @@ export default function AuthenticationProvider(_props: {
     } else if (isAuthenticated()) {
       setStatus('LOGGED');
     } else {
-      setStatus('LOGIN');
+      setStatus('INIT');
     }
   }, []);
 
@@ -158,7 +157,7 @@ export default function AuthenticationProvider(_props: {
     window.location.href = initFlowUrl({
       authorization_endpoint,
       client_id,
-      redirect_uri,
+      redirect_uri: redirect_uri ?? window.location.href,
       requested_scopes,
       code_challenge: pkceChallengeFromVerifier(new_code_verifier),
       state: new_state,
@@ -168,7 +167,9 @@ export default function AuthenticationProvider(_props: {
 
   const logout = () => {
     clear();
-    window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${redirect_uri}`;
+    window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
+      redirect_logout_uri ?? redirect_uri
+    }`;
   };
 
   const isAuthenticated = (): boolean => {
