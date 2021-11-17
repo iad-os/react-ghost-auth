@@ -27,6 +27,7 @@ export type AuthenticationOptions = {
   token_endpoint: string;
   client_id: string;
   requested_scopes: string;
+  access_type?: string;
   redirect_uri: string;
   redirect_logout_uri?: string;
   end_session_endpoint: string;
@@ -42,6 +43,7 @@ type InitFlowUrlType = {
   code_challenge: string;
   state: string;
   code_challenge_method: 'S256';
+  access_type?: string;
 };
 
 type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
@@ -94,7 +96,10 @@ export default function AuthenticationProvider(_props: {
     redirect_uri,
     redirect_logout_uri,
     client_secret,
+    access_type,
   } = _props.options;
+
+  const BASIC_TOKEN = `Basic ${window.btoa(`${client_id}:${client_secret}`)}`;
 
   const [status, setStatus] = useState<AuthCtxType['status']>(
     !!getState() ? 'LOGGING' : 'INIT'
@@ -133,9 +138,7 @@ export default function AuthenticationProvider(_props: {
                   headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     ...(client_secret && {
-                      Authorization: `Basic ${window.btoa(
-                        `${client_id}:${client_secret}`
-                      )}"`,
+                      Authorization: BASIC_TOKEN,
                     }),
                   },
                 }
@@ -175,11 +178,14 @@ export default function AuthenticationProvider(_props: {
               queryString.stringify({
                 grant_type: 'refresh_token',
                 refresh_token: getRefreshToken(),
-                client_id,
+                ...(!client_secret && { client_id }),
               }),
               {
                 headers: {
                   'Content-Type': 'application/x-www-form-urlencoded',
+                  ...(client_secret && {
+                    Authorization: BASIC_TOKEN,
+                  }),
                 },
               }
             )
@@ -209,6 +215,7 @@ export default function AuthenticationProvider(_props: {
       code_challenge: pkceChallengeFromVerifier(new_code_verifier),
       state: new_state,
       code_challenge_method: 'S256',
+      access_type,
     });
   };
 
@@ -262,6 +269,7 @@ function initFlowUrl(init: InitFlowUrlType) {
     code_challenge,
     state,
     code_challenge_method,
+    access_type,
   } = init;
   return `${authorization_endpoint}?${queryString.stringify({
     response_type: 'code',
@@ -271,6 +279,7 @@ function initFlowUrl(init: InitFlowUrlType) {
     redirect_uri,
     code_challenge,
     code_challenge_method,
+    ...(access_type && { access_type }),
   })}`;
 }
 
