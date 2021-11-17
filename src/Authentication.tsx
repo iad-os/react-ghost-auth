@@ -64,6 +64,14 @@ type InitFlowUrlType = {
 
 type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
 
+type ProviderInfoType = {
+  selected: string;
+  list: string[];
+  defaultProvider?: string;
+};
+
+type TokenInfo = Pick<TokenResponse, 'access_token' | 'refresh_token'>;
+
 type AuthCtxType = {
   login: (provider?: string) => void;
   logout: () => void;
@@ -71,11 +79,8 @@ type AuthCtxType = {
   status: EStatus;
   userInfo: () => { [key: string]: any } | undefined;
   changeStatus: (status: EStatus) => void;
-  providerInfo: () => {
-    selected?: string;
-    list?: string[];
-    defaultProvider?: string;
-  };
+  providerInfo: () => ProviderInfoType | undefined;
+  tokenInfo: () => TokenInfo | undefined;
 };
 
 const AutenticationContext = React.createContext<AuthCtxType>(
@@ -292,11 +297,22 @@ export default function AuthenticationProvider(props: Props) {
     [status]
   );
 
-  const providerInfo = () => ({
-    selected: provider?.name,
-    list: Object.keys(providers),
-    defaultProvider: defaultProviderName,
-  });
+  const providerInfo = () =>
+    providers
+      ? ({
+          selected: provider?.name,
+          list: Object.keys(providers),
+          defaultProvider: defaultProviderName,
+        } as ProviderInfoType)
+      : undefined;
+
+  const tokenInfo = () =>
+    isAuthenticated()
+      ? ({
+          access_token: getAccessToken(),
+          refresh_token: getRefreshToken(),
+        } as TokenInfo)
+      : undefined;
 
   return (
     <AutenticationContext.Provider
@@ -308,6 +324,7 @@ export default function AuthenticationProvider(props: Props) {
         userInfo,
         changeStatus,
         providerInfo,
+        tokenInfo,
       }}
     >
       {children}
