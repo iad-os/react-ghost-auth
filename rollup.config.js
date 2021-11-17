@@ -26,8 +26,10 @@ export default {
     external(),
     resolve(),
     typescript({
-      rollupCommonJSResolveHack: true,
-      exclude: '**/__tests__/**',
+      exclude: [
+        '**/__tests__/**',
+      ],
+      rollupCommonJSResolveHack: false,
       clean: true,
     }),
     commonjs({

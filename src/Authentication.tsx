@@ -44,6 +44,7 @@ type ProviderOptions = {
 };
 
 export type AuthenticationConfig = {
+  default?: string;
   providers: {
     [key in string]: ProviderOptions;
   };
@@ -64,19 +65,24 @@ type InitFlowUrlType = {
 type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
 
 type AuthCtxType = {
-  login: (provider: string) => void;
+  login: (provider?: string) => void;
   logout: () => void;
   isAuthenticated: () => boolean;
   status: EStatus;
   userInfo: () => { [key: string]: any } | undefined;
-  updateStatus: (status: EStatus) => void;
+  changeStatus: (status: EStatus) => void;
+  providerInfo: () => {
+    selected?: string;
+    list?: string[];
+    defaultProvider?: string;
+  };
 };
 
 const AutenticationContext = React.createContext<AuthCtxType>(
   {} as AuthCtxType
 );
 
-export default function AuthenticationProvider(_props: {
+type Props = {
   axios: AxiosStatic;
   config: AuthenticationConfig;
   children: React.ReactNode;
@@ -98,10 +104,12 @@ export default function AuthenticationProvider(_props: {
       refresh_token: string;
     }
   ) => Promise<TokenResponse>;
-}) {
-  const { axios, onTokenRequest, onRefreshTokenRequest } = _props;
+};
+export default function AuthenticationProvider(props: Props) {
+  const { axios, onTokenRequest, onRefreshTokenRequest, config, children } =
+    props;
 
-  const { providers, serviceUrl } = _props.config;
+  const { providers, serviceUrl, default: defaultProviderName } = config;
 
   const [status, setStatus] = useState<AuthCtxType['status']>(
     !!getState() ? 'LOGGING' : 'INIT'
@@ -217,14 +225,15 @@ export default function AuthenticationProvider(_props: {
         return {} as TokenResponse;
       }
     } else {
-      throw Error('Provider not found');
+      throw Error('OIDC Provider not found');
     }
   };
 
-  const login = (providerName: string) => {
-    const _provider = providers[providerName];
-    if (_provider) {
-      setProviderOidc(providerName);
+  const login = (providerName?: string) => {
+    const _providerName = providerName ?? defaultProviderName ?? '';
+    const _provider = providerName ? providers[providerName] : undefined;
+    if (_provider && _providerName) {
+      setProviderOidc(_providerName);
       const {
         authorization_endpoint,
         client_id,
@@ -248,7 +257,7 @@ export default function AuthenticationProvider(_props: {
       });
     } else {
       clear();
-      throw new Error('Provider not found');
+      throw new Error('OIDC Provider not found');
     }
   };
 
@@ -261,7 +270,7 @@ export default function AuthenticationProvider(_props: {
         redirect_logout_uri ?? redirect_uri
       }`;
     } else {
-      throw new Error('Provider not found');
+      throw new Error('OIDC Provider not found');
     }
   };
 
@@ -278,10 +287,16 @@ export default function AuthenticationProvider(_props: {
     return undefined;
   };
 
-  const updateStatus = useCallback(
+  const changeStatus = useCallback(
     (status: EStatus) => setStatus(status),
     [status]
   );
+
+  const providerInfo = () => ({
+    selected: provider?.name,
+    list: Object.keys(providers),
+    defaultProvider: defaultProviderName,
+  });
 
   return (
     <AutenticationContext.Provider
@@ -291,10 +306,11 @@ export default function AuthenticationProvider(_props: {
         isAuthenticated,
         status,
         userInfo,
-        updateStatus,
+        changeStatus,
+        providerInfo,
       }}
     >
-      {_props.children}
+      {children}
     </AutenticationContext.Provider>
   );
 }
