@@ -23,7 +23,6 @@ import {
 } from './utils';
 
 export type AuthenticationOptions = {
-  serviceUrl?: string;
   authorization_endpoint: string;
   token_endpoint: string;
   client_id: string;
@@ -31,7 +30,8 @@ export type AuthenticationOptions = {
   redirect_uri: string;
   redirect_logout_uri?: string;
   end_session_endpoint: string;
-  realm: string;
+  client_secret?: string;
+  serviceUrl?: string;
 };
 
 type InitFlowUrlType = {
@@ -63,8 +63,26 @@ export default function AuthenticationProvider(_props: {
   axios: AxiosStatic;
   options: AuthenticationOptions;
   children: React.ReactNode;
+  onTokenRequest?: (
+    axios: AxiosStatic,
+    data: {
+      token_endpoint: string;
+      client_id: string;
+      redirect_uri: string;
+      code: string;
+      code_verifier: string;
+    }
+  ) => Promise<TokenResponse>;
+  onRefreshTokenRequest?: (
+    axios: AxiosStatic,
+    data: {
+      token_endpoint: string;
+      client_id: string;
+      refresh_token: string;
+    }
+  ) => Promise<TokenResponse>;
 }) {
-  const { axios } = _props;
+  const { axios, onTokenRequest, onRefreshTokenRequest } = _props;
 
   const {
     client_id,
@@ -72,10 +90,10 @@ export default function AuthenticationProvider(_props: {
     requested_scopes,
     token_endpoint,
     end_session_endpoint,
-    realm,
     serviceUrl,
     redirect_uri,
     redirect_logout_uri,
+    client_secret,
   } = _props.options;
 
   const [status, setStatus] = useState<AuthCtxType['status']>(
@@ -85,29 +103,43 @@ export default function AuthenticationProvider(_props: {
   useEffect(() => {
     interceptor(axios, serviceUrl ?? '', refreshToken);
 
-    const code = queryString.parse(window.location.search).code;
+    const code = queryString.parse(window.location.search).code as string;
     const stateLocalStorage = getState();
     const code_verifier = getCodeVerifier();
     if (code && stateLocalStorage && code_verifier) {
       setStatus('LOGGING');
-      axios
-        .post(
-          token_endpoint,
-          queryString.stringify({
-            client_secret: '',
-            grant_type: 'authorization_code',
-            client_id,
-            redirect_uri,
-            code,
-            code_verifier,
-          }),
-          {
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-          }
-        )
-        .then(function ({ data }: { data: TokenResponse }) {
+
+      const tokenRequest = onTokenRequest
+        ? () =>
+            onTokenRequest(axios, {
+              token_endpoint,
+              client_id,
+              redirect_uri,
+              code,
+              code_verifier,
+            })
+        : () =>
+            axios
+              .post(
+                token_endpoint,
+                queryString.stringify({
+                  grant_type: 'authorization_code',
+                  client_id,
+                  redirect_uri,
+                  code,
+                  code_verifier,
+                  ...(client_secret && { client_secret }),
+                }),
+                {
+                  headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                  },
+                }
+              )
+              .then(res => res.data as TokenResponse);
+
+      tokenRequest()
+        .then(function (data: TokenResponse) {
           setToken(data);
           window.location.href = redirect_uri;
         })
@@ -125,21 +157,33 @@ export default function AuthenticationProvider(_props: {
   }, []);
 
   const refreshToken = async () => {
+    const refreshTokenFn = onRefreshTokenRequest
+      ? () =>
+          onRefreshTokenRequest(axios, {
+            client_id,
+            token_endpoint,
+            refresh_token: getRefreshToken() || '',
+          })
+      : () =>
+          axios
+            .post(
+              token_endpoint,
+              queryString.stringify({
+                grant_type: 'refresh_token',
+                client_id,
+                refresh_token: getRefreshToken(),
+                ...(client_secret && { client_secret }),
+              }),
+              {
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                },
+              }
+            )
+            .then(res => res.data as TokenResponse);
+
     try {
-      const { data }: { data: TokenResponse } = await axios.post(
-        token_endpoint,
-        queryString.stringify({
-          grant_type: 'refresh_token',
-          client_id,
-          refresh_token: getRefreshToken(),
-        }),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-      setToken(data);
+      const data: TokenResponse = await refreshTokenFn();
       setStatus('LOGGED');
       return data;
     } catch (err) {
