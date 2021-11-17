@@ -1,6 +1,6 @@
 import AuthenticationProvider from './Authentication';
 import { useAuthentication, AuthenticationConfig } from './Authentication';
-import Autologin from './components/AutoLogin';
+import AutoLogin from './components/AutoLogin';
 import LoggedIn from './components/LoggedIn';
 import LogginIn from './components/LogginIn';
 import Public from './components/Public';
@@ -11,4 +11,4 @@ export default AuthenticationProvider;
 export { useAuthentication };
 export type { AuthenticationConfig, TokenResponse };
 
-export { Autologin, LoggedIn, LogginIn, Public, RequireAuth };
+export { AutoLogin, LoggedIn, LogginIn, Public, RequireAuth };
