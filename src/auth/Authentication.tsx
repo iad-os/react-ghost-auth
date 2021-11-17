@@ -1,6 +1,12 @@
 import { AxiosStatic } from 'axios';
 import queryString from 'query-string';
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { interceptor } from './interceptor';
 import {
   clear,
@@ -8,9 +14,11 @@ import {
   getAccessToken,
   getCodeVerifier,
   getIdToken,
+  getProviderOidc,
   getRefreshToken,
   getState,
   setCodeVerifier,
+  setProviderOidc,
   setState as setStateLocalStorage,
   setToken,
 } from './LocalStorageService';
@@ -22,7 +30,8 @@ import {
   pkceChallengeFromVerifier,
 } from './utils';
 
-export type AuthenticationOptions = {
+type ProviderOptions = {
+  name: string;
   authorization_endpoint: string;
   token_endpoint: string;
   client_id: string;
@@ -32,6 +41,12 @@ export type AuthenticationOptions = {
   redirect_logout_uri?: string;
   end_session_endpoint: string;
   client_secret?: string;
+};
+
+export type AuthenticationConfig = {
+  providers: {
+    [key in string]: ProviderOptions;
+  };
   serviceUrl?: string;
 };
 
@@ -49,7 +64,7 @@ type InitFlowUrlType = {
 type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
 
 type AuthCtxType = {
-  login: () => void;
+  login: (provider: string) => void;
   logout: () => void;
   isAuthenticated: () => boolean;
   status: EStatus;
@@ -63,7 +78,7 @@ const AutenticationContext = React.createContext<AuthCtxType>(
 
 export default function AuthenticationProvider(_props: {
   axios: AxiosStatic;
-  options: AuthenticationOptions;
+  config: AuthenticationConfig;
   children: React.ReactNode;
   onTokenRequest?: (
     axios: AxiosStatic,
@@ -86,24 +101,16 @@ export default function AuthenticationProvider(_props: {
 }) {
   const { axios, onTokenRequest, onRefreshTokenRequest } = _props;
 
-  const {
-    client_id,
-    authorization_endpoint,
-    requested_scopes,
-    token_endpoint,
-    end_session_endpoint,
-    serviceUrl,
-    redirect_uri,
-    redirect_logout_uri,
-    client_secret,
-    access_type,
-  } = _props.options;
-
-  const BASIC_TOKEN = `Basic ${window.btoa(`${client_id}:${client_secret}`)}`;
+  const { providers, serviceUrl } = _props.config;
 
   const [status, setStatus] = useState<AuthCtxType['status']>(
     !!getState() ? 'LOGGING' : 'INIT'
   );
+
+  const provider = useMemo(() => {
+    const providerName = getProviderOidc();
+    return providerName ? providers[providerName] : undefined;
+  }, []);
 
   useEffect(() => {
     interceptor(axios, serviceUrl ?? '', refreshToken);
@@ -111,9 +118,13 @@ export default function AuthenticationProvider(_props: {
     const code = queryString.parse(window.location.search).code as string;
     const stateLocalStorage = getState();
     const code_verifier = getCodeVerifier();
-    if (code && stateLocalStorage && code_verifier) {
+    if (code && stateLocalStorage && code_verifier && provider) {
       setStatus('LOGGING');
-
+      const { client_id, token_endpoint, client_secret, redirect_uri } =
+        provider;
+      const BASIC_TOKEN = `Basic ${window.btoa(
+        `${client_id}:${client_secret}`
+      )}`;
       const tokenRequest = onTokenRequest
         ? () =>
             onTokenRequest(axios, {
@@ -164,66 +175,94 @@ export default function AuthenticationProvider(_props: {
   }, []);
 
   const refreshToken = async () => {
-    const refreshTokenFn = onRefreshTokenRequest
-      ? () =>
-          onRefreshTokenRequest(axios, {
-            client_id,
-            token_endpoint,
-            refresh_token: getRefreshToken() || '',
-          })
-      : () =>
-          axios
-            .post(
+    if (provider) {
+      const { client_id, token_endpoint, client_secret } = provider;
+      const BASIC_TOKEN = `Basic ${window.btoa(
+        `${client_id}:${client_secret}`
+      )}`;
+      const refreshTokenFn = onRefreshTokenRequest
+        ? () =>
+            onRefreshTokenRequest(axios, {
+              client_id,
               token_endpoint,
-              queryString.stringify({
-                grant_type: 'refresh_token',
-                refresh_token: getRefreshToken(),
-                ...(!client_secret && { client_id }),
-              }),
-              {
-                headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                  ...(client_secret && {
-                    Authorization: BASIC_TOKEN,
-                  }),
-                },
-              }
-            )
-            .then(res => res.data as TokenResponse);
+              refresh_token: getRefreshToken() || '',
+            })
+        : () =>
+            axios
+              .post(
+                token_endpoint,
+                queryString.stringify({
+                  grant_type: 'refresh_token',
+                  refresh_token: getRefreshToken(),
+                  ...(!client_secret && { client_id }),
+                }),
+                {
+                  headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    ...(client_secret && {
+                      Authorization: BASIC_TOKEN,
+                    }),
+                  },
+                }
+              )
+              .then(res => res.data as TokenResponse);
 
-    try {
-      const data: TokenResponse = await refreshTokenFn();
-      setStatus('LOGGED');
-      return data;
-    } catch (err) {
-      console.log(err);
-      logout();
-      return {} as TokenResponse;
+      try {
+        const data: TokenResponse = await refreshTokenFn();
+        setStatus('LOGGED');
+        return data;
+      } catch (err) {
+        console.log(err);
+        logout();
+        return {} as TokenResponse;
+      }
+    } else {
+      throw Error('Provider not found');
     }
   };
 
-  const login = () => {
-    const new_code_verifier = generateCodeVerifier();
-    const new_state = generateRandomState();
-    setStateLocalStorage(new_state);
-    setCodeVerifier(new_code_verifier);
-    window.location.href = initFlowUrl({
-      authorization_endpoint,
-      client_id,
-      redirect_uri: redirect_uri ?? window.location.href,
-      requested_scopes,
-      code_challenge: pkceChallengeFromVerifier(new_code_verifier),
-      state: new_state,
-      code_challenge_method: 'S256',
-      access_type,
-    });
+  const login = (providerName: string) => {
+    const _provider = providers[providerName];
+    if (_provider) {
+      setProviderOidc(providerName);
+      const {
+        authorization_endpoint,
+        client_id,
+        redirect_uri,
+        requested_scopes,
+        access_type,
+      } = _provider;
+      const new_code_verifier = generateCodeVerifier();
+      const new_state = generateRandomState();
+      setStateLocalStorage(new_state);
+      setCodeVerifier(new_code_verifier);
+      window.location.href = initFlowUrl({
+        authorization_endpoint,
+        client_id,
+        redirect_uri: redirect_uri ?? window.location.href,
+        requested_scopes,
+        code_challenge: pkceChallengeFromVerifier(new_code_verifier),
+        state: new_state,
+        code_challenge_method: 'S256',
+        access_type,
+      });
+    } else {
+      clear();
+      throw new Error('Provider not found');
+    }
   };
 
   const logout = () => {
-    clear();
-    window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
-      redirect_logout_uri ?? redirect_uri
-    }`;
+    if (provider) {
+      clear();
+      const { end_session_endpoint, redirect_logout_uri, redirect_uri } =
+        provider;
+      window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
+        redirect_logout_uri ?? redirect_uri
+      }`;
+    } else {
+      throw new Error('Provider not found');
+    }
   };
 
   const isAuthenticated = (): boolean => {

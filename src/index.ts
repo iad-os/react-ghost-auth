@@ -9,7 +9,7 @@ import RequireAuth from './auth/components/RequireAuth';
 
 export default AuthenticationProvider;
 
-export type { AuthenticationOptions } from './auth/Authentication';
+export type { AuthenticationConfig } from './auth/Authentication';
 
 export { useAuthentication };
 

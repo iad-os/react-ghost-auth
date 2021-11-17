@@ -6,6 +6,7 @@ const REFRESH_TOKEN = `${HOSTNAME}_refresh_token`;
 const ID_TOKEN = `${HOSTNAME}_id_token`;
 const STATE = `${HOSTNAME}_state`;
 const CODE_VERIFIER = `${HOSTNAME}_code_verifier`;
+const PROVIDER_OIDC = `${HOSTNAME}_provider_oidc`;
 export function setToken(tokenObj: TokenResponse) {
   localStorage.setItem(ACCESS_TOKEN, tokenObj.access_token);
   localStorage.setItem(REFRESH_TOKEN, tokenObj.refresh_token);
@@ -27,9 +28,11 @@ export function clearToken() {
   localStorage.removeItem(ACCESS_TOKEN);
   localStorage.removeItem(REFRESH_TOKEN);
   localStorage.removeItem(ID_TOKEN);
+  localStorage.removeItem(PROVIDER_OIDC);
 }
 
 export function clear() {
+  localStorage.removeItem(PROVIDER_OIDC);
   localStorage.removeItem(ACCESS_TOKEN);
   localStorage.removeItem(REFRESH_TOKEN);
   localStorage.removeItem(ID_TOKEN);
@@ -56,6 +59,14 @@ export function setCodeVerifier(value: string) {
 export function clearCodeVerifierAndSate() {
   localStorage.removeItem(STATE);
   localStorage.removeItem(CODE_VERIFIER);
+}
+
+export function setProviderOidc(value: string) {
+  return localStorage.setItem(PROVIDER_OIDC, value);
+}
+
+export function getProviderOidc() {
+  return localStorage.getItem(PROVIDER_OIDC);
 }
 
 const SessionData = (function () {
