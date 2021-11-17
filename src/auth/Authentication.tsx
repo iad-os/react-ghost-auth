@@ -124,15 +124,19 @@ export default function AuthenticationProvider(_props: {
                 token_endpoint,
                 queryString.stringify({
                   grant_type: 'authorization_code',
-                  client_id,
                   redirect_uri,
                   code,
                   code_verifier,
-                  ...(client_secret && { client_secret }),
+                  ...(!client_secret && { client_id }),
                 }),
                 {
                   headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
+                    ...(client_secret && {
+                      Authorization: `Basic ${window.btoa(
+                        `${client_id}:${client_secret}`
+                      )}"`,
+                    }),
                   },
                 }
               )
@@ -170,9 +174,8 @@ export default function AuthenticationProvider(_props: {
               token_endpoint,
               queryString.stringify({
                 grant_type: 'refresh_token',
-                client_id,
                 refresh_token: getRefreshToken(),
-                ...(client_secret && { client_secret }),
+                client_id,
               }),
               {
                 headers: {
