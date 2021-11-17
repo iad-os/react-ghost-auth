@@ -1,16 +1,26 @@
 import React, { useEffect } from 'react';
 import { useAuthentication } from '../Authentication';
 
-function AutoLogin() {
+type Props = {
+  children?: React.ReactNode;
+  defaultProvider?: string;
+};
+
+function AutoLogin(props: Props) {
+  const { children, defaultProvider } = props;
   const { login, isAuthenticated, status } = useAuthentication();
 
   useEffect(() => {
     if (!isAuthenticated() && status === 'LOGIN') {
-      login();
+      defaultProvider && login(defaultProvider);
     }
   }, [status]);
 
-  return <></>;
+  return (
+    <>
+      {!defaultProvider && !isAuthenticated() && status === 'LOGIN' && children}
+    </>
+  );
 }
 
 export default AutoLogin;
