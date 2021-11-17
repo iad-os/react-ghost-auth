@@ -7,11 +7,17 @@ type Props = {
 
 function AutoLogin(props: Props) {
   const { children } = props;
-  const { login, isAuthenticated, status, providerInfo } = useAuthentication();
+  const {
+    login,
+    isAuthenticated,
+    status,
+    providerInfo: providerInfoFn,
+  } = useAuthentication();
 
-  const { list: providers } = providerInfo();
+  const providerInfo = providerInfoFn();
 
   useEffect(() => {
+    const providers = providerInfo?.list;
     if (!isAuthenticated() && status === 'LOGIN' && providers) {
       providers.length === 1 && login(providers[0]);
     }
@@ -19,8 +25,8 @@ function AutoLogin(props: Props) {
 
   return (
     <>
-      {providers &&
-        providers.length > 1 &&
+      {providerInfo &&
+        providerInfo.list.length > 1 &&
         !isAuthenticated() &&
         status === 'LOGIN' &&
         children}
