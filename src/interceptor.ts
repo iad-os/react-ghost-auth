@@ -1,4 +1,4 @@
-import axios, { AxiosStatic } from 'axios';
+import axios, { AxiosRequestConfig, AxiosStatic } from 'axios';
 import { getAccessToken } from './LocalStorageService';
 import { TokenResponse } from './models/TokenResponse';
 export function interceptor(
@@ -15,9 +15,9 @@ export function interceptor(
         token &&
         matchHostname(serviceUrl || '', config.url || '')
       ) {
-        config.headers['Authorization'] = `Bearer ${token}`;
         config.headers = {
           ...config.headers,
+          Authorization: `Bearer ${token}`,
         };
       }
       return config;
@@ -32,14 +32,16 @@ export function interceptor(
       return response;
     },
     error => {
-      const originalRequest = error.config;
+      const originalRequest: AxiosRequestConfig & { _retry: boolean } =
+        error.config;
       if (error?.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         return refreshToken()
           .then(res => {
-            axios.defaults.headers.common[
-              'Authorization'
-            ] = `Bearer ${res.access_token}`;
+            originalRequest.headers = {
+              ...originalRequest.headers,
+              Authorization: `Bearer ${res.access_token}`,
+            };
             return axios(originalRequest);
           })
           .catch(error => Promise.reject(error));

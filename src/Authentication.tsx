@@ -20,7 +20,7 @@ import {
   setCodeVerifier,
   setProviderOidc,
   setState as setStateLocalStorage,
-  setToken,
+  setTokens,
 } from './LocalStorageService';
 import { TokenResponse } from './models/TokenResponse';
 import {
@@ -171,7 +171,7 @@ export default function AuthenticationProvider(props: Props) {
 
       tokenRequest()
         .then(function (data: TokenResponse) {
-          setToken(data);
+          setTokens(data);
           window.location.href = redirect_uri;
         })
         .catch(function (error) {
@@ -223,6 +223,7 @@ export default function AuthenticationProvider(props: Props) {
       try {
         const data: TokenResponse = await refreshTokenFn();
         setStatus('LOGGED');
+        setTokens(data);
         return data;
       } catch (err) {
         console.log(err);

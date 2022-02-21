@@ -7,7 +7,7 @@ const ID_TOKEN = `${HOSTNAME}_id_token`;
 const STATE = `${HOSTNAME}_state`;
 const CODE_VERIFIER = `${HOSTNAME}_code_verifier`;
 const PROVIDER_OIDC = `${HOSTNAME}_provider_oidc`;
-export function setToken(tokenObj: TokenResponse) {
+export function setTokens(tokenObj: TokenResponse) {
   localStorage.setItem(ACCESS_TOKEN, tokenObj.access_token);
   localStorage.setItem(REFRESH_TOKEN, tokenObj.refresh_token);
   localStorage.setItem(ID_TOKEN, tokenObj.id_token);
