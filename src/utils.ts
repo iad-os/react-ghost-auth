@@ -1,15 +1,19 @@
-// Generate a secure random string using the browser crypto functions
 function generateRandomBytes(): string {
   return makeid(64);
 }
 
 // Calculate the SHA256 hash of the input text.
 // Returns a promise that resolves to an ArrayBuffer
-async function sha256(buffer: string) {
-  const msgUint8 = new TextEncoder().encode(buffer); // encode as (utf-8) Uint8Array
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8); // hash the message
-  const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+async function sha256(codeVerifier: string) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(codeVerifier);
+  const buffer = await window.crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (var i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return binary;
 }
 
 export function generateCodeVerifier() {
@@ -25,9 +29,9 @@ export async function pkceChallengeFromVerifier(verify: string) {
   return base64urlencode(await sha256(verify));
 }
 
-export function base64urlencode(hexStr: string) {
+export function base64urlencode(str: string) {
   return window
-    .btoa(hexStr)
+    .btoa(str)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
