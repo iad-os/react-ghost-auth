@@ -251,15 +251,19 @@ export default function AuthenticationProvider(props: Props) {
       const new_state = generateRandomState();
       setStateLocalStorage(new_state);
       setCodeVerifier(new_code_verifier);
-      window.location.href = initFlowUrl({
-        authorization_endpoint,
-        client_id,
-        redirect_uri: redirect_uri ?? window.location.href,
-        requested_scopes,
-        code_challenge: pkceChallengeFromVerifier(new_code_verifier),
-        state: new_state,
-        code_challenge_method: 'S256',
-        access_type,
+      pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
+        window.location.replace(
+          initFlowUrl({
+            authorization_endpoint,
+            client_id,
+            redirect_uri: redirect_uri ?? window.location.href,
+            requested_scopes,
+            code_challenge,
+            state: new_state,
+            code_challenge_method: 'S256',
+            access_type,
+          })
+        );
       });
     } else {
       clear();
