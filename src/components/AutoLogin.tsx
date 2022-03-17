@@ -18,8 +18,13 @@ function AutoLogin(props: Props) {
 
   useEffect(() => {
     const providers = providerInfo?.list;
-    if (!isAuthenticated() && status === 'LOGIN' && providers) {
-      providers.length === 1 && login(providers[0]);
+    if (
+      children &&
+      providers?.length === 1 &&
+      status === 'LOGIN' &&
+      !isAuthenticated()
+    ) {
+      login(providers[0]);
     }
   }, [status]);
 

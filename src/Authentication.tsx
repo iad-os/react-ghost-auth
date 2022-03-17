@@ -87,10 +87,11 @@ const AutenticationContext = React.createContext<AuthCtxType>(
   {} as AuthCtxType
 );
 
-type Props = {
+export type AuthorizationProps = {
   axios: AxiosStatic;
   config: AuthenticationConfig;
   children: React.ReactNode;
+  needAuthorization?: (serviceUrl: string, requestUrl: string) => boolean;
   onTokenRequest?: (
     axios: AxiosStatic,
     data: {
@@ -110,9 +111,16 @@ type Props = {
     }
   ) => Promise<TokenResponse>;
 };
-export default function AuthenticationProvider(props: Props) {
-  const { axios, onTokenRequest, onRefreshTokenRequest, config, children } =
-    props;
+
+export default function AuthenticationProvider(props: AuthorizationProps) {
+  const {
+    axios,
+    onTokenRequest,
+    onRefreshTokenRequest,
+    config,
+    children,
+    needAuthorization,
+  } = props;
 
   const { providers, serviceUrl, default: defaultProviderName } = config;
 
@@ -126,7 +134,7 @@ export default function AuthenticationProvider(props: Props) {
   }, []);
 
   useEffect(() => {
-    interceptor(axios, serviceUrl ?? '', refreshToken);
+    interceptor(axios, serviceUrl ?? '/', refreshToken, needAuthorization);
 
     const code = queryString.parse(window.location.search).code as string;
     const stateLocalStorage = getState();

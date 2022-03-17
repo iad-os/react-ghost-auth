@@ -1,23 +1,26 @@
 import { AxiosRequestConfig, AxiosStatic } from 'axios';
+import { AuthorizationProps } from './Authentication';
 import { getAccessToken } from './LocalStorageService';
 import { TokenResponse } from './models/TokenResponse';
+
 export function interceptor(
   axios: AxiosStatic,
   serviceUrl: string,
-  refreshToken: () => Promise<TokenResponse>
+  refreshToken: () => Promise<TokenResponse>,
+  needAuthorization: AuthorizationProps['needAuthorization'] = (
+    serviceUrl,
+    requestUrl
+  ) => serviceUrl === '/' || matchHostname(serviceUrl, requestUrl)
 ) {
   axios.interceptors.request.use(
     config => {
       const token = getAccessToken();
-      if (
-        config &&
-        config.headers &&
-        token &&
-        matchHostname(serviceUrl || '', config.url || '')
-      ) {
-        config.headers = {
-          ...config.headers,
-          Authorization: `Bearer ${token}`,
+      if (token && needAuthorization(serviceUrl, config.url || '')) {
+        config = {
+          headers: {
+            ...config.headers,
+            Authorization: `Bearer ${token}`,
+          },
         };
       }
       return config;
