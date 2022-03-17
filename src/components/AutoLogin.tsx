@@ -19,7 +19,7 @@ function AutoLogin(props: Props) {
   useEffect(() => {
     const providers = providerInfo?.list;
     if (
-      children &&
+      !children &&
       providers?.length === 1 &&
       status === 'LOGIN' &&
       !isAuthenticated()
