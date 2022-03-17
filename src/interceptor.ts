@@ -16,11 +16,9 @@ export function interceptor(
     config => {
       const token = getAccessToken();
       if (token && needAuthorization(serviceUrl, config.url || '')) {
-        config = {
-          headers: {
-            ...config.headers,
-            Authorization: `Bearer ${token}`,
-          },
+        config.headers = {
+          ...config.headers,
+          Authorization: `Bearer ${token}`,
         };
       }
       return config;
