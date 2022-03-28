@@ -122,7 +122,15 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     needAuthorization,
   } = props;
 
-  const { providers, serviceUrl, default: defaultProviderName } = config;
+  const providerNameList = Object.keys(config.providers || {}).map(k => k);
+
+  const {
+    providers,
+    serviceUrl,
+    default: defaultProviderName = providerNameList.length > 0
+      ? providerNameList[0]
+      : '',
+  } = config;
 
   const [status, setStatus] = useState<AuthCtxType['status']>(
     !!getState() ? 'LOGGING' : 'INIT'
@@ -245,7 +253,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const login = (providerName?: string) => {
     const _providerName = providerName ?? defaultProviderName ?? '';
-    const _provider = providerName ? providers[providerName] : undefined;
+    const _provider = _providerName ? providers[_providerName] : undefined;
     if (_provider && _providerName) {
       setProviderOidc(_providerName);
       const {
