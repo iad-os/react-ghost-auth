@@ -6,7 +6,7 @@ type Props = {
 function Public(props: Props) {
   const { children } = props;
   const { status } = useAuthentication();
-  return <>{status !== 'LOGGING' && children}</>;
+  return <div>{status !== 'LOGGING' && children}</div>;
 }
 
 export default Public;

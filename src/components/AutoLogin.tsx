@@ -29,13 +29,13 @@ function AutoLogin(props: Props) {
   }, [status]);
 
   return (
-    <>
+    <div>
       {providerInfo &&
         providerInfo.list.length > 1 &&
         !isAuthenticated() &&
         status === 'LOGIN' &&
         children}
-    </>
+    </div>
   );
 }
 

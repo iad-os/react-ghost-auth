@@ -29,10 +29,10 @@ function RequireAuth(props: Props) {
   }, [authRequired]);
 
   return (
-    <>
+    <div>
       {authRequired && <LoggedIn>{children}</LoggedIn>}
-      {!authRequired && <>{children}</>}
-    </>
+      {!authRequired && <div>{children}</div>}
+    </div>
   );
 }
 
