@@ -43,7 +43,7 @@
     "build": "rm -rf build && rollup -c"
   },
   "peerDependencies": {
-    "react": "^18.0.0"
+    "react": "^18.1.0"
   },
   "keywords": [
     "react",
