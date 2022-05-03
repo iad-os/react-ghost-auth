@@ -1,6 +1,6 @@
 import { TokenResponse } from './models/TokenResponse';
 
-const HOSTNAME = window.location.hostname;
+const HOSTNAME = process.env.REACT_APP_GA_PREFIX || window.location.hostname;
 const ACCESS_TOKEN = `${HOSTNAME}_access_token`;
 const REFRESH_TOKEN = `${HOSTNAME}_refresh_token`;
 const ID_TOKEN = `${HOSTNAME}_id_token`;
