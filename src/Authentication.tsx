@@ -313,7 +313,7 @@ export function useToken(): string {
   return token;
 }
 
-export function useUserInfo<T>(): T {
+export function useUserInfo<T = any>(): T {
   const { isAuthenticated } = useAuthentication();
   const idToken = getIdToken();
 
