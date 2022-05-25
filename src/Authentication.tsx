@@ -91,6 +91,7 @@ export type AuthorizationProps = {
   axios: AxiosStatic;
   config: AuthenticationConfig;
   children: React.ReactNode;
+  onRoute: (route: string) => void;
   needAuthorization?: (serviceUrl: string, requestUrl: string) => boolean;
   onTokenRequest?: (
     axios: AxiosStatic,
@@ -120,6 +121,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     config,
     children,
     needAuthorization,
+    onRoute,
   } = props;
 
   const providerNameList = Object.keys(config.providers || {}).map(k => k);
@@ -188,7 +190,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       tokenRequest()
         .then(function (data: TokenResponse) {
           setTokens(data);
-          window.location.href = redirect_uri;
+          onRoute(redirect_uri);
         })
         .catch(function (error) {
           console.log(error);
