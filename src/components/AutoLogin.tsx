@@ -21,7 +21,11 @@ function AutoLogin(props: Props) {
   useEffect(() => {
     const providers = providerInfo?.list;
 
-    if (storedProvider !== null) {
+    if (
+      storedProvider !== null &&
+      status !== 'LOGGED' &&
+      status !== 'LOGGING'
+    ) {
       login(storedProvider);
     } else if (
       !children &&
