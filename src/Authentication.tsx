@@ -190,6 +190,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       tokenRequest()
         .then(function (data: TokenResponse) {
           setTokens(data);
+          setStatus('LOGGED');
           onRoute(redirect_uri);
         })
         .catch(function (error) {
