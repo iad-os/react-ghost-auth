@@ -1,41 +1,35 @@
 import { TokenResponse } from './models/TokenResponse';
 
 const HOSTNAME = process.env.REACT_APP_GA_PREFIX || window.location.hostname;
-const ACCESS_TOKEN = `${HOSTNAME}_access_token`;
-const REFRESH_TOKEN = `${HOSTNAME}_refresh_token`;
-const ID_TOKEN = `${HOSTNAME}_id_token`;
 const STATE = `${HOSTNAME}_state`;
 const CODE_VERIFIER = `${HOSTNAME}_code_verifier`;
 const PROVIDER_OIDC = `${HOSTNAME}_provider_oidc`;
+
+let tokenInfo: TokenResponse | null = null;
+
 export function setTokens(tokenObj: TokenResponse) {
-  localStorage.setItem(ACCESS_TOKEN, tokenObj.access_token);
-  localStorage.setItem(REFRESH_TOKEN, tokenObj.refresh_token);
-  localStorage.setItem(ID_TOKEN, tokenObj.id_token);
+  tokenInfo = JSON.parse(JSON.stringify(tokenObj)) as TokenResponse;
 }
 
 export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN);
+  return tokenInfo?.access_token || null;
 }
 
 export function getRefreshToken() {
-  return localStorage.getItem(REFRESH_TOKEN);
+  return tokenInfo?.refresh_token || null;
 }
 export function getIdToken() {
-  return localStorage.getItem(ID_TOKEN);
+  return tokenInfo?.id_token || null;
 }
 
 export function clearToken() {
-  localStorage.removeItem(ACCESS_TOKEN);
-  localStorage.removeItem(REFRESH_TOKEN);
-  localStorage.removeItem(ID_TOKEN);
+  tokenInfo = null;
   localStorage.removeItem(PROVIDER_OIDC);
 }
 
 export function clear() {
+  tokenInfo = null;
   localStorage.removeItem(PROVIDER_OIDC);
-  localStorage.removeItem(ACCESS_TOKEN);
-  localStorage.removeItem(REFRESH_TOKEN);
-  localStorage.removeItem(ID_TOKEN);
   localStorage.removeItem(STATE);
   localStorage.removeItem(CODE_VERIFIER);
 }
@@ -68,30 +62,3 @@ export function setProviderOidc(value: string) {
 export function getProviderOidc() {
   return localStorage.getItem(PROVIDER_OIDC);
 }
-
-const SessionData = (function () {
-  let data: Record<string, any> = {};
-
-  const getItem = function (key: string) {
-    return data[key];
-  };
-
-  const setItem = function (key: string, value: any) {
-    data[key] = value;
-  };
-
-  const removeItem = function (key: string) {
-    delete data[key];
-  };
-
-  const clear = function () {
-    data = {};
-  };
-
-  return {
-    getItem,
-    setItem,
-    removeItem,
-    clear,
-  };
-})();
