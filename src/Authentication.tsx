@@ -21,7 +21,7 @@ import {
   setProviderOidc,
   setState as setStateLocalStorage,
   setTokens,
-} from './LocalStorageService';
+} from './AuthStoreService';
 import { TokenResponse } from './models/TokenResponse';
 import {
   base64decode,

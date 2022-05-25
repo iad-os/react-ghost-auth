@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAuthentication } from '../Authentication';
-import { getProviderOidc } from '../LocalStorageService';
+import { getProviderOidc } from '../AuthStoreService';
 
 type Props = {
   children?: React.ReactNode;

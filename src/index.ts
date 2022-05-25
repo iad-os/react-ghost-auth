@@ -6,9 +6,10 @@ import LogginIn from './components/LogginIn';
 import Public from './components/Public';
 import RequireAuth from './components/RequireAuth';
 import { TokenResponse } from './models/TokenResponse';
+import * as AuthStoreService from './AuthStoreService';
 export default AuthenticationProvider;
 
 export { useAuthentication };
 export type { AuthenticationConfig, TokenResponse };
 
-export { AutoLogin, LoggedIn, LogginIn, Public, RequireAuth };
+export { AutoLogin, LoggedIn, LogginIn, Public, RequireAuth, AuthStoreService };

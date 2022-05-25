@@ -1,6 +1,6 @@
 import { AxiosRequestConfig, AxiosStatic } from 'axios';
 import { AuthorizationProps } from './Authentication';
-import { getAccessToken } from './LocalStorageService';
+import { getAccessToken } from './AuthStoreService';
 import { TokenResponse } from './models/TokenResponse';
 
 export function interceptor(
