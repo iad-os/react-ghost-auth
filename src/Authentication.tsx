@@ -107,12 +107,21 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   useEffect(() => {
     interceptor(axios, serviceUrl ?? '/', refreshToken, needAuthorization);
-
     const code = queryString.parse(window.location.search).code as string;
     const stateLocalStorage = getState();
     const code_verifier = getCodeVerifier();
     if (code && stateLocalStorage && code_verifier && provider) {
       setStatus('LOGGING');
+      retriveToken(code, code_verifier);
+    } else if (isAuthenticated()) {
+      setStatus('LOGGED');
+    } else {
+      setStatus('INIT');
+    }
+  }, []);
+
+  const retriveToken = (code: string, code_verifier: string) => {
+    if (provider) {
       const { client_id, token_endpoint, client_secret, redirect_uri } =
         provider;
       const BASIC_TOKEN = `Basic ${window.btoa(
@@ -161,12 +170,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         .finally(() => {
           clearCodeVerifierAndSate();
         });
-    } else if (isAuthenticated()) {
-      setStatus('LOGGED');
     } else {
-      setStatus('INIT');
+      throw Error('OIDC Provider not found');
     }
-  }, []);
+  };
 
   const refreshToken = async () => {
     if (provider) {

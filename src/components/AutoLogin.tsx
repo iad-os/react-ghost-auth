@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuthentication } from '../Authentication';
 import { getProviderOidc } from '../AuthStoreService';
 
@@ -8,6 +8,9 @@ type Props = {
 
 function AutoLogin(props: Props) {
   const { children } = props;
+
+  const [showChildren, setShowChildren] = useState<boolean>(false);
+
   const {
     login,
     isAuthenticated,
@@ -20,33 +23,22 @@ function AutoLogin(props: Props) {
 
   useEffect(() => {
     const providers = providerInfo?.list;
-
-    if (
-      storedProvider !== null &&
-      status !== 'LOGGED' &&
-      status !== 'LOGGING'
-    ) {
-      login(storedProvider);
-    } else if (
-      !children &&
-      providers?.length === 1 &&
-      status === 'LOGIN' &&
-      !isAuthenticated()
-    ) {
-      login(providers[0]);
+    if (status === 'LOGIN' && !isAuthenticated()) {
+      if (storedProvider !== null) {
+        setShowChildren(false);
+        login(storedProvider);
+      } else if (!children && providers?.length === 1) {
+        setShowChildren(false);
+        login(providers[0]);
+      } else {
+        setShowChildren(true);
+      }
+    } else {
+      setShowChildren(false);
     }
   }, [status]);
 
-  return (
-    <div>
-      {storedProvider === null &&
-        providerInfo &&
-        providerInfo.list.length > 1 &&
-        !isAuthenticated() &&
-        status === 'LOGIN' &&
-        children}
-    </div>
-  );
+  return <div>{showChildren && children}</div>;
 }
 
 export default AutoLogin;
