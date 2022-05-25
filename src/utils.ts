@@ -1,4 +1,4 @@
-import { InitFlowUrlType } from './types';
+import { InitFlowUrlType } from './auth.types';
 import queryString from 'query-string';
 
 function generateRandomBytes(): string {
