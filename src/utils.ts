@@ -1,4 +1,4 @@
-import { InitFlowUrlType } from './types';
+import { InitFlowUrlType } from './models';
 import queryString from 'query-string';
 
 function generateRandomBytes(): string {

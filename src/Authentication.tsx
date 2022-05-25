@@ -22,7 +22,7 @@ import {
   setState as setStateLocalStorage,
   setTokens,
 } from './AuthStoreService';
-import { AuthenticationConfig, EStatus, TokenResponse } from './types';
+import { AuthenticationConfig, EStatus, TokenResponse } from './models';
 import {
   base64decode,
   generateRandomString,
