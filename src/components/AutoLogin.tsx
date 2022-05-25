@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAuthentication } from '../Authentication';
+import { getProviderOidc } from '../LocalStorageService';
 
 type Props = {
   children?: React.ReactNode;
@@ -15,10 +16,14 @@ function AutoLogin(props: Props) {
   } = useAuthentication();
 
   const providerInfo = providerInfoFn();
+  const storedProvider = getProviderOidc();
 
   useEffect(() => {
     const providers = providerInfo?.list;
-    if (
+
+    if (storedProvider !== null) {
+      login(storedProvider);
+    } else if (
       !children &&
       providers?.length === 1 &&
       status === 'LOGIN' &&
@@ -30,7 +35,8 @@ function AutoLogin(props: Props) {
 
   return (
     <div>
-      {providerInfo &&
+      {storedProvider === null &&
+        providerInfo &&
         providerInfo.list.length > 1 &&
         !isAuthenticated() &&
         status === 'LOGIN' &&
