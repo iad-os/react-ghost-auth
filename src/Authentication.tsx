@@ -22,47 +22,13 @@ import {
   setState as setStateLocalStorage,
   setTokens,
 } from './AuthStoreService';
-import { TokenResponse } from './models/TokenResponse';
+import { AuthenticationConfig, EStatus, TokenResponse } from './type';
 import {
   base64decode,
-  generateCodeVerifier,
-  generateRandomState,
+  generateRandomString,
+  openIdInitialFlowUrl,
   pkceChallengeFromVerifier,
 } from './utils';
-
-type ProviderOptions = {
-  name: string;
-  authorization_endpoint: string;
-  token_endpoint: string;
-  client_id: string;
-  requested_scopes: string;
-  access_type?: string;
-  redirect_uri: string;
-  redirect_logout_uri?: string;
-  end_session_endpoint: string;
-  client_secret?: string;
-};
-
-export type AuthenticationConfig = {
-  default?: string;
-  providers: {
-    [key in string]: ProviderOptions;
-  };
-  serviceUrl?: string;
-};
-
-type InitFlowUrlType = {
-  authorization_endpoint: string;
-  client_id: string;
-  redirect_uri: string;
-  requested_scopes: string;
-  code_challenge: string;
-  state: string;
-  code_challenge_method: 'S256';
-  access_type?: string;
-};
-
-type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
 
 type ProviderInfoType = {
   selected: string;
@@ -70,17 +36,13 @@ type ProviderInfoType = {
   defaultProvider?: string;
 };
 
-type TokenInfo = Pick<TokenResponse, 'access_token' | 'refresh_token'>;
-
 type AuthCtxType = {
   login: (provider?: string) => void;
   logout: () => void;
   isAuthenticated: () => boolean;
   status: EStatus;
-  userInfo: () => { [key: string]: any } | undefined;
   changeStatus: (status: EStatus) => void;
   providerInfo: () => ProviderInfoType | undefined;
-  tokenInfo: () => TokenInfo | undefined;
 };
 
 const AutenticationContext = React.createContext<AuthCtxType>(
@@ -266,13 +228,13 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         requested_scopes,
         access_type,
       } = _provider;
-      const new_code_verifier = generateCodeVerifier();
-      const new_state = generateRandomState();
+      const new_code_verifier = generateRandomString();
+      const new_state = generateRandomString();
       setStateLocalStorage(new_state);
       setCodeVerifier(new_code_verifier);
       pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
         window.location.replace(
-          initFlowUrl({
+          openIdInitialFlowUrl({
             authorization_endpoint,
             client_id,
             redirect_uri: redirect_uri ?? window.location.href,
@@ -307,15 +269,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     return !!getAccessToken();
   };
 
-  const userInfo: AuthCtxType['userInfo'] = () => {
-    const idToken = getIdToken();
-    if (idToken) {
-      const [_, payload] = idToken.split('.');
-      return base64decode(payload);
-    }
-    return undefined;
-  };
-
   const changeStatus = useCallback(
     (status: EStatus) => setStatus(status),
     [status]
@@ -330,14 +283,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         } as ProviderInfoType)
       : undefined;
 
-  const tokenInfo = () =>
-    isAuthenticated()
-      ? ({
-          access_token: getAccessToken(),
-          refresh_token: getRefreshToken(),
-        } as TokenInfo)
-      : undefined;
-
   return (
     <AutenticationContext.Provider
       value={{
@@ -345,10 +290,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         logout,
         isAuthenticated,
         status,
-        userInfo,
         changeStatus,
         providerInfo,
-        tokenInfo,
       }}
     >
       {children}
@@ -356,29 +299,27 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   );
 }
 
-function initFlowUrl(init: InitFlowUrlType) {
-  const {
-    authorization_endpoint,
-    client_id,
-    redirect_uri,
-    requested_scopes,
-    code_challenge,
-    state,
-    code_challenge_method,
-    access_type,
-  } = init;
-  return `${authorization_endpoint}?${queryString.stringify({
-    response_type: 'code',
-    client_id,
-    state,
-    scope: requested_scopes,
-    redirect_uri,
-    code_challenge,
-    code_challenge_method,
-    ...(access_type && { access_type }),
-  })}`;
-}
-
 export function useAuthentication() {
   return useContext(AutenticationContext);
+}
+
+export function useToken(): string {
+  const { isAuthenticated } = useAuthentication();
+  const token = getAccessToken();
+  if (!isAuthenticated() || !token) {
+    throw new Error('User not authenticated!');
+  }
+
+  return token;
+}
+
+export function useUserInfo<T>(): T {
+  const { isAuthenticated } = useAuthentication();
+  const idToken = getIdToken();
+
+  if (!isAuthenticated() || !idToken) {
+    throw new Error('User not authenticated!');
+  }
+  const [_, payload] = idToken.split('.');
+  return base64decode(payload) as T;
 }

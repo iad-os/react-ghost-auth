@@ -1,3 +1,6 @@
+import { InitFlowUrlType } from './type';
+import queryString from 'query-string';
+
 function generateRandomBytes(): string {
   return makeid(64);
 }
@@ -16,11 +19,7 @@ async function sha256(codeVerifier: string) {
   return binary;
 }
 
-export function generateCodeVerifier() {
-  return base64urlencode(generateRandomBytes());
-}
-
-export function generateRandomState() {
+export function generateRandomString() {
   return base64urlencode(generateRandomBytes());
 }
 
@@ -49,4 +48,27 @@ function makeid(size: number) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
 
   return text;
+}
+
+export function openIdInitialFlowUrl(init: InitFlowUrlType) {
+  const {
+    authorization_endpoint,
+    client_id,
+    redirect_uri,
+    requested_scopes,
+    code_challenge,
+    state,
+    code_challenge_method,
+    access_type,
+  } = init;
+  return `${authorization_endpoint}?${queryString.stringify({
+    response_type: 'code',
+    client_id,
+    state,
+    scope: requested_scopes,
+    redirect_uri,
+    code_challenge,
+    code_challenge_method,
+    ...(access_type && { access_type }),
+  })}`;
 }
