@@ -8,7 +8,7 @@ import LoggedIn from './components/LoggedIn';
 import LogginIn from './components/LogginIn';
 import Public from './components/Public';
 import RequireAuth from './components/RequireAuth';
-import { TokenResponse, AuthenticationConfig } from './type';
+import { TokenResponse, AuthenticationConfig } from './types';
 export default AuthenticationProvider;
 
 export { useAuthentication, useToken, useUserInfo };

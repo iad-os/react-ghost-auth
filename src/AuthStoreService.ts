@@ -1,4 +1,4 @@
-import { TokenResponse } from './type';
+import { TokenResponse } from './types';
 
 const HOSTNAME = process.env.REACT_APP_GA_PREFIX || window.location.hostname;
 const STATE = `${HOSTNAME}_state`;
