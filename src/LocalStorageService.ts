@@ -5,30 +5,28 @@ const STATE = `${HOSTNAME}_state`;
 const CODE_VERIFIER = `${HOSTNAME}_code_verifier`;
 const PROVIDER_OIDC = `${HOSTNAME}_provider_oidc`;
 
-let tokenInfo: TokenResponse | null = null;
-
 export function setTokens(tokenObj: TokenResponse) {
-  tokenInfo = JSON.parse(JSON.stringify(tokenObj)) as TokenResponse;
+  tokenInfo.setData(JSON.parse(JSON.stringify(tokenObj)) as TokenResponse);
 }
 
 export function getAccessToken() {
-  return tokenInfo?.access_token || null;
+  return tokenInfo.getData()?.access_token || null;
 }
 
 export function getRefreshToken() {
-  return tokenInfo?.refresh_token || null;
+  return tokenInfo.getData()?.refresh_token || null;
 }
 export function getIdToken() {
-  return tokenInfo?.id_token || null;
+  return tokenInfo.getData()?.id_token || null;
 }
 
 export function clearToken() {
-  tokenInfo = null;
+  tokenInfo.setData(null);
   localStorage.removeItem(PROVIDER_OIDC);
 }
 
 export function clear() {
-  tokenInfo = null;
+  tokenInfo.setData(null);
   localStorage.removeItem(PROVIDER_OIDC);
   localStorage.removeItem(STATE);
   localStorage.removeItem(CODE_VERIFIER);
@@ -62,3 +60,19 @@ export function setProviderOidc(value: string) {
 export function getProviderOidc() {
   return localStorage.getItem(PROVIDER_OIDC);
 }
+
+const tokenInfo = (function () {
+  let data: TokenResponse | null = null;
+
+  const getData = function () {
+    return data;
+  };
+  const setData = function (input: TokenResponse | null) {
+    data = input;
+  };
+
+  return {
+    getData,
+    setData,
+  };
+})();
