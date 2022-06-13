@@ -4,9 +4,13 @@ const HOSTNAME = process.env.REACT_APP_GA_PREFIX || window.location.hostname;
 const STATE = `${HOSTNAME}_state`;
 const CODE_VERIFIER = `${HOSTNAME}_code_verifier`;
 const PROVIDER_OIDC = `${HOSTNAME}_provider_oidc`;
+const ACCESS_TOKEN = `${HOSTNAME}_access_token`;
 
-export function setTokens(tokenObj: TokenResponse) {
+export function setTokens(tokenObj: TokenResponse, lsToken: boolean) {
   tokenInfo.setData(JSON.parse(JSON.stringify(tokenObj)) as TokenResponse);
+  if (lsToken) {
+    localStorage.setItem(ACCESS_TOKEN, tokenObj.access_token);
+  }
 }
 
 export function getAccessToken() {
@@ -30,6 +34,7 @@ export function clear() {
   localStorage.removeItem(PROVIDER_OIDC);
   localStorage.removeItem(STATE);
   localStorage.removeItem(CODE_VERIFIER);
+  localStorage.removeItem(ACCESS_TOKEN);
 }
 
 export function getState() {

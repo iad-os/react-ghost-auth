@@ -73,6 +73,7 @@ export type AuthorizationProps = {
       refresh_token: string;
     }
   ) => Promise<TokenResponse>;
+  lsToken?: boolean;
 };
 
 export default function AuthenticationProvider(props: AuthorizationProps) {
@@ -84,6 +85,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     children,
     needAuthorization,
     onRoute,
+    lsToken = false,
   } = props;
 
   const providerNameList = Object.keys(config.providers || {}).map(k => k);
@@ -160,7 +162,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
       tokenRequest()
         .then(function (data: TokenResponse) {
-          setTokens(data);
+          setTokens(data, lsToken);
           setStatus('LOGGED');
           onRoute(redirect_uri);
         })
@@ -211,7 +213,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       try {
         const data: TokenResponse = await refreshTokenFn();
         setStatus('LOGGED');
-        setTokens(data);
+        setTokens(data, lsToken);
         return data;
       } catch (err) {
         console.log(err);
