@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { interceptor } from './interceptor';
@@ -107,18 +108,23 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     return providerName ? providers[providerName] : undefined;
   }, []);
 
+  const onceCall = useRef<boolean>(false);
+
   useEffect(() => {
-    interceptor(axios, serviceUrl ?? '/', refreshToken, needAuthorization);
-    const code = queryString.parse(window.location.search).code as string;
-    const stateLocalStorage = getState();
-    const code_verifier = getCodeVerifier();
-    if (code && stateLocalStorage && code_verifier && provider) {
-      setStatus('LOGGING');
-      retriveToken(code, code_verifier);
-    } else if (isAuthenticated()) {
-      setStatus('LOGGED');
-    } else {
-      setStatus('INIT');
+    if (!onceCall.current) {
+      onceCall.current = true;
+      interceptor(axios, serviceUrl ?? '/', refreshToken, needAuthorization);
+      const code = queryString.parse(window.location.search).code as string;
+      const stateLocalStorage = getState();
+      const code_verifier = getCodeVerifier();
+      if (code && stateLocalStorage && code_verifier && provider) {
+        setStatus('LOGGING');
+        retriveToken(code, code_verifier);
+      } else if (isAuthenticated()) {
+        setStatus('LOGGED');
+      } else {
+        setStatus('INIT');
+      }
     }
   }, []);
 
