@@ -3,9 +3,9 @@ export type InitFlowUrlType = {
   client_id: string;
   redirect_uri: string;
   requested_scopes: string;
-  code_challenge: string;
+  code_challenge?: string;
   state: string;
-  code_challenge_method: 'S256';
+  code_challenge_method?: 'S256';
   access_type?: string;
 };
 
@@ -40,6 +40,7 @@ export type ProviderOptions = {
   redirect_logout_uri?: string;
   end_session_endpoint: string;
   client_secret?: string;
+  pkce?: boolean;
 };
 
 export type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';

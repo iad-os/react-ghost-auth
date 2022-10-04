@@ -30,6 +30,7 @@ import {
   openIdInitialFlowUrl,
   pkceChallengeFromVerifier,
 } from './utils';
+import { nanoid } from 'nanoid';
 
 type ProviderInfoType = {
   selected: string;
@@ -243,24 +244,41 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         requested_scopes,
         access_type,
       } = _provider;
-      const new_code_verifier = generateRandomString();
-      const new_state = generateRandomString();
-      setStateLocalStorage(new_state);
-      setCodeVerifier(new_code_verifier);
-      pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
+
+      if (_provider.pkce) {
+        const new_code_verifier = generateRandomString();
+        const new_state = generateRandomString();
+        setStateLocalStorage(new_state);
+        setCodeVerifier(new_code_verifier);
+        pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
+          window.location.replace(
+            openIdInitialFlowUrl({
+              authorization_endpoint,
+              client_id,
+              redirect_uri: redirect_uri ?? window.location.href,
+              requested_scopes,
+              code_challenge,
+              state: new_state,
+              code_challenge_method: 'S256',
+              access_type,
+            })
+          );
+        });
+      } else {
+        const new_state = nanoid(64);
+        setStateLocalStorage(new_state);
+        setCodeVerifier('NO_PKCE');
         window.location.replace(
           openIdInitialFlowUrl({
             authorization_endpoint,
             client_id,
             redirect_uri: redirect_uri ?? window.location.href,
             requested_scopes,
-            code_challenge,
             state: new_state,
-            code_challenge_method: 'S256',
             access_type,
           })
         );
-      });
+      }
     } else {
       clear();
       throw new Error('OIDC Provider not found');
