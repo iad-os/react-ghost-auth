@@ -1,5 +1,5 @@
 import { InitFlowUrlType } from './models';
-import queryString from 'query-string';
+import queryString from 'qs';
 
 function generateRandomBytes(): string {
   return makeid(64);
