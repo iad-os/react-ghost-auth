@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuthentication } from '../Authentication';
 import { getProviderOidc } from '../AuthStoreService';
 
@@ -9,7 +9,10 @@ type Props = {
 function AutoLogin(props: Props) {
   const { children } = props;
 
-  const [showChildren, setShowChildren] = useState<boolean>(false);
+  const showChildren = useMemo<boolean>(
+    () => children !== undefined,
+    [children]
+  );
 
   const {
     login,
@@ -23,18 +26,14 @@ function AutoLogin(props: Props) {
 
   useEffect(() => {
     const providers = providerInfo?.list;
-    if (status === 'LOGIN' && !isAuthenticated()) {
+    if (status === 'LOGIN' && !isAuthenticated() && !showChildren) {
       if (storedProvider !== null) {
-        setShowChildren(false);
         login(storedProvider);
-      } else if (!children && providers?.length === 1) {
-        setShowChildren(false);
+      } else if (providers?.length === 1) {
         login(providers[0]);
       } else {
-        setShowChildren(true);
+        throw new Error('AutoLogin: No provider founded!');
       }
-    } else {
-      setShowChildren(false);
     }
   }, [status]);
 
