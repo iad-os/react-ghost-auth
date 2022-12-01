@@ -1,6 +1,6 @@
 {
   "name": "@iad-os/react-ghost-auth",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "maintainers": [
     {
       "name": "Daniele Fiungo",
@@ -26,11 +26,12 @@
   "dependencies": {
     "axios": "^0.27.2",
     "nanoid": "^4.0.0",
-    "query-string": "^7.1.1"
+    "qs": "^6.11.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^22.0.0",
     "@rollup/plugin-node-resolve": "^13.3.0",
+    "@types/qs": "^6.9.7",
     "@types/react": "^18.0.12",
     "@types/react-dom": "^18.0.5",
     "prettier": "2.6.2",

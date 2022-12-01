@@ -1,5 +1,5 @@
 import { AxiosStatic } from 'axios';
-import queryString from 'query-string';
+import queryString from 'qs';
 import React, {
   useCallback,
   useContext,
