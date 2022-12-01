@@ -1,3 +1,4 @@
+import omitBy from 'lodash.omitby';
 import { InitFlowUrlType } from './models';
 
 function generateRandomBytes(): string {
@@ -50,26 +51,16 @@ export function makeid(size: number) {
 }
 
 export function openIdInitialFlowUrl(init: InitFlowUrlType) {
-  const {
-    authorization_endpoint,
-    client_id,
-    redirect_uri,
-    requested_scopes,
-    code_challenge,
-    state,
-    code_challenge_method,
-    access_type,
-  } = init;
-  return `${authorization_endpoint}?${stringfyQueryString({
-    response_type: 'code',
-    client_id,
-    state,
-    scope: requested_scopes,
-    redirect_uri,
-    code_challenge,
-    code_challenge_method,
-    ...(access_type && { access_type }),
-  })}`;
+  const { authorization_endpoint, requested_scopes, ...qs } = init;
+  const queryString = omitBy(
+    {
+      ...qs,
+      response_type: 'code',
+      scope: requested_scopes,
+    },
+    value => value === null || value === undefined
+  );
+  return `${authorization_endpoint}?${stringfyQueryString(queryString)}`;
 }
 
 export function parseQueryString(search: string) {
@@ -80,6 +71,7 @@ export function parseQueryString(search: string) {
       params.get(value) || ''
     );
   }
+  console.log(paramObj);
   return paramObj;
 }
 
