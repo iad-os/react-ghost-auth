@@ -1,5 +1,4 @@
 import { AxiosStatic } from 'axios';
-import queryString from 'qs';
 import React, {
   useCallback,
   useContext,
@@ -27,10 +26,12 @@ import { AuthenticationConfig, EStatus, TokenResponse } from './models';
 import {
   base64decode,
   generateRandomString,
+  makeid,
   openIdInitialFlowUrl,
+  parseQueryString,
   pkceChallengeFromVerifier,
+  stringfyQueryString,
 } from './utils';
-import { nanoid } from 'nanoid';
 
 type ProviderInfoType = {
   selected: string;
@@ -115,7 +116,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     if (!onceCall.current) {
       onceCall.current = true;
       interceptor(axios, serviceUrl ?? '/', refreshToken, needAuthorization);
-      const code = queryString.parse(window.location.search).code as string;
+      const code = parseQueryString(window.location.search).code as string;
       const stateLocalStorage = getState();
       const code_verifier = getCodeVerifier();
       if (code && stateLocalStorage && code_verifier && provider) {
@@ -149,7 +150,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             axios
               .post(
                 token_endpoint,
-                queryString.stringify({
+                stringfyQueryString({
                   grant_type: 'authorization_code',
                   redirect_uri,
                   code,
@@ -201,7 +202,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             axios
               .post(
                 token_endpoint,
-                queryString.stringify({
+                stringfyQueryString({
                   grant_type: 'refresh_token',
                   refresh_token: getRefreshToken(),
                   ...(!client_secret && { client_id }),
@@ -265,7 +266,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           );
         });
       } else {
-        const new_state = nanoid(64);
+        const new_state = makeid(64);
         setStateLocalStorage(new_state);
         setCodeVerifier('NO_PKCE');
         window.location.replace(

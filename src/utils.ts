@@ -1,5 +1,4 @@
 import { InitFlowUrlType } from './models';
-import queryString from 'qs';
 
 function generateRandomBytes(): string {
   return makeid(64);
@@ -39,7 +38,7 @@ export function base64decode(str: string) {
   return JSON.parse(window.atob(str));
 }
 
-function makeid(size: number) {
+export function makeid(size: number) {
   var text = '';
   var possible =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -61,7 +60,7 @@ export function openIdInitialFlowUrl(init: InitFlowUrlType) {
     code_challenge_method,
     access_type,
   } = init;
-  return `${authorization_endpoint}?${queryString.stringify({
+  return `${authorization_endpoint}?${stringfyQueryString({
     response_type: 'code',
     client_id,
     state,
@@ -71,4 +70,24 @@ export function openIdInitialFlowUrl(init: InitFlowUrlType) {
     code_challenge_method,
     ...(access_type && { access_type }),
   })}`;
+}
+
+export function parseQueryString(url: string) {
+  const uri = new URL(url);
+  const params = uri.searchParams;
+  let paramObj: any = {};
+  for (let value of params.keys()) {
+    paramObj[decodeURIComponent(value)] = decodeURIComponent(
+      params.get(value) || ''
+    );
+  }
+  return paramObj;
+}
+
+export function stringfyQueryString(params: any) {
+  return Object.keys(params)
+    .map(key => {
+      return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+    })
+    .join('&');
 }
