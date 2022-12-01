@@ -72,9 +72,8 @@ export function openIdInitialFlowUrl(init: InitFlowUrlType) {
   })}`;
 }
 
-export function parseQueryString(url: string) {
-  const uri = new URL(url);
-  const params = uri.searchParams;
+export function parseQueryString(search: string) {
+  const params = new URLSearchParams(search);
   let paramObj: any = {};
   for (let value of params.keys()) {
     paramObj[decodeURIComponent(value)] = decodeURIComponent(
