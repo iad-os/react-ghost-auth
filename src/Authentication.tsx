@@ -77,6 +77,7 @@ export type AuthorizationProps = {
     }
   ) => Promise<TokenResponse>;
   lsToken?: boolean;
+  onError?: (message: string) => void;
 };
 
 export default function AuthenticationProvider(props: AuthorizationProps) {
@@ -89,6 +90,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     needAuthorization,
     onRoute,
     lsToken = false,
+    onError,
   } = props;
 
   const providerNameList = Object.keys(config.providers || {}).map(k => k);
@@ -116,7 +118,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     if (!onceCall.current) {
       onceCall.current = true;
       interceptor(axios, serviceUrl ?? '/', refreshToken, needAuthorization);
-      const code = parseQueryString(window.location.search).code as string;
+      const params = parseQueryString(window.location.search);
+      const code = params.code as string | undefined;
       const stateLocalStorage = getState();
       const code_verifier = getCodeVerifier();
       if (code && stateLocalStorage && code_verifier && provider) {
@@ -124,6 +127,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         retriveToken(code, code_verifier);
       } else if (isAuthenticated()) {
         setStatus('LOGGED');
+      } else if (params.error) {
+        onError && onError(params.error_description);
       } else {
         setStatus('INIT');
       }
