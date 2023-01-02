@@ -301,8 +301,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
               authorization_endpoint,
               client_id,
               redirect_uri: overrideRedirectUri
-                ? window.location.href
-                : redirect_uri ?? window.location.href,
+                ? window.location.href.split('?')[0]
+                : redirect_uri ?? window.location.href.split('?')[0],
               requested_scopes,
               code_challenge,
               state: new_state,
@@ -320,8 +320,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             authorization_endpoint,
             client_id,
             redirect_uri: overrideRedirectUri
-              ? window.location.href
-              : redirect_uri ?? window.location.href,
+              ? window.location.href.split('?')[0]
+              : redirect_uri ?? window.location.href.split('?')[0],
             requested_scopes,
             state: new_state,
             access_type,
