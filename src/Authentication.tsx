@@ -100,7 +100,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     overrideRedirectUri = false,
   } = props;
 
-  const [cookies, setCookie, removeCookie] = useCookies([COOKIE_SESSION]);
+  const [cookies, setCookie, removeCookie] = useCookies([
+    COOKIE_SESSION,
+    'redirect_uri',
+  ]);
 
   const currentUri = window.location.href.split('?')[0];
 
@@ -176,7 +179,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             onTokenRequest(axios, {
               token_endpoint,
               client_id,
-              redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
+              redirect_uri: cookies.logged_in ?? redirect_uri,
               code,
               code_verifier,
             })
@@ -186,7 +189,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
                 token_endpoint,
                 stringfyQueryString({
                   grant_type: 'authorization_code',
-                  redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
+                  redirect_uri: cookies.logged_in ?? redirect_uri,
                   code,
                   code_verifier,
                   ...(!client_secret && { client_id }),
@@ -212,7 +215,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             sameSite: 'lax',
             domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
           });
-          onRoute(overrideRedirectUri ? currentUri : redirect_uri);
+          onRoute(cookies.logged_in ?? redirect_uri);
         })
         .catch(function (error) {
           console.error(error);
@@ -292,6 +295,12 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         access_type,
       } = _provider;
 
+      setCookie(
+        'redirect_uri',
+        overrideRedirectUri ? currentUri : redirect_uri,
+        { maxAge: 60, domain: window.location.hostname }
+      );
+
       if (_provider.pkce) {
         const new_code_verifier = generateRandomString();
         const new_state = generateRandomString();
@@ -302,7 +311,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             openIdInitialFlowUrl({
               authorization_endpoint,
               client_id,
-              redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
+              redirect_uri: cookies.logged_in ?? redirect_uri,
               requested_scopes,
               code_challenge,
               state: new_state,
@@ -319,7 +328,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           openIdInitialFlowUrl({
             authorization_endpoint,
             client_id,
-            redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
+            redirect_uri: cookies.logged_in ?? redirect_uri,
             requested_scopes,
             state: new_state,
             access_type,
