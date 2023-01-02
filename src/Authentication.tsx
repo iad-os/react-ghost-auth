@@ -80,9 +80,10 @@ export type AuthorizationProps = {
   lsToken?: boolean;
   onError?: (message: string) => void;
   enableLog?: boolean;
+  overrideRedirectUri?: boolean;
 };
 
-export const COOKIE_SESSION = 'ga_session';
+export const COOKIE_SESSION = 'logged_in';
 
 export default function AuthenticationProvider(props: AuthorizationProps) {
   const {
@@ -96,6 +97,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     lsToken = false,
     onError,
     enableLog = false,
+    overrideRedirectUri = false,
   } = props;
 
   const [cookies, setCookie, removeCookie] = useCookies([COOKIE_SESSION]);
@@ -202,8 +204,11 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         .then(function (data: TokenResponse) {
           setTokens(data, lsToken);
           setStatus('LOGGED');
-          setCookie('ga_session', data.id_token, {
-            maxAge: data.refresh_expires_in,
+          setCookie('logged_in', data.id_token, {
+            maxAge: 60 * 60 * 24 * 365,
+            httpOnly: true,
+            sameSite: 'lax',
+            domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
           });
           onRoute(redirect_uri);
         })
@@ -255,8 +260,11 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         const data: TokenResponse = await refreshTokenFn();
         setStatus('LOGGED');
         setTokens(data, lsToken);
-        setCookie('ga_session', data.id_token, {
-          maxAge: data.refresh_expires_in,
+        setCookie('logged_in', data.id_token, {
+          maxAge: 60 * 60 * 24 * 365,
+          httpOnly: true,
+          sameSite: 'lax',
+          domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
         });
         return data;
       } catch (err) {
@@ -292,7 +300,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             openIdInitialFlowUrl({
               authorization_endpoint,
               client_id,
-              redirect_uri: redirect_uri ?? window.location.href,
+              redirect_uri: overrideRedirectUri
+                ? window.location.href
+                : redirect_uri ?? window.location.href,
               requested_scopes,
               code_challenge,
               state: new_state,
@@ -309,7 +319,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           openIdInitialFlowUrl({
             authorization_endpoint,
             client_id,
-            redirect_uri: redirect_uri ?? window.location.href,
+            redirect_uri: overrideRedirectUri
+              ? window.location.href
+              : redirect_uri ?? window.location.href,
             requested_scopes,
             state: new_state,
             access_type,
@@ -323,7 +335,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const logout = () => {
-    removeCookie('ga_session');
+    removeCookie('logged_in');
     if (provider) {
       clear();
       const { end_session_endpoint, redirect_logout_uri, redirect_uri } =

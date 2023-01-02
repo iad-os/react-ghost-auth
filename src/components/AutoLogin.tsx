@@ -26,8 +26,8 @@ function AutoLogin(props: Props) {
   const storedProvider = getProviderOidc();
 
   useEffect(() => {
-    const { ga_session } = cookies;
-    if (ga_session && status === 'INIT') {
+    const { logged_in } = cookies;
+    if (logged_in && status === 'INIT') {
       changeStatus('LOGIN');
     }
   }, []);
