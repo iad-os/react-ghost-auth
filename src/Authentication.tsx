@@ -102,6 +102,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const [cookies, setCookie, removeCookie] = useCookies([COOKIE_SESSION]);
 
+  const currentUri = window.location.href.split('?')[0];
+
   const providerNameList = Object.keys(config.providers || {}).map(k => k);
 
   const {
@@ -174,7 +176,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             onTokenRequest(axios, {
               token_endpoint,
               client_id,
-              redirect_uri,
+              redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
               code,
               code_verifier,
             })
@@ -184,7 +186,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
                 token_endpoint,
                 stringfyQueryString({
                   grant_type: 'authorization_code',
-                  redirect_uri,
+                  redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
                   code,
                   code_verifier,
                   ...(!client_secret && { client_id }),
@@ -210,7 +212,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             sameSite: 'lax',
             domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
           });
-          onRoute(redirect_uri);
+          onRoute(overrideRedirectUri ? currentUri : redirect_uri);
         })
         .catch(function (error) {
           console.error(error);
@@ -300,9 +302,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             openIdInitialFlowUrl({
               authorization_endpoint,
               client_id,
-              redirect_uri: overrideRedirectUri
-                ? window.location.href.split('?')[0]
-                : redirect_uri ?? window.location.href.split('?')[0],
+              redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
               requested_scopes,
               code_challenge,
               state: new_state,
@@ -319,9 +319,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           openIdInitialFlowUrl({
             authorization_endpoint,
             client_id,
-            redirect_uri: overrideRedirectUri
-              ? window.location.href.split('?')[0]
-              : redirect_uri ?? window.location.href.split('?')[0],
+            redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
             requested_scopes,
             state: new_state,
             access_type,
