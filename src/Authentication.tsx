@@ -78,6 +78,7 @@ export type AuthorizationProps = {
   ) => Promise<TokenResponse>;
   lsToken?: boolean;
   onError?: (message: string) => void;
+  enableLog?: boolean;
 };
 
 export default function AuthenticationProvider(props: AuthorizationProps) {
@@ -91,6 +92,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     onRoute,
     lsToken = false,
     onError,
+    enableLog = false,
   } = props;
 
   const providerNameList = Object.keys(config.providers || {}).map(k => k);
@@ -134,6 +136,24 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (enableLog) {
+      const params = parseQueryString(window.location.search);
+      const code = params.code as string | undefined;
+      const stateLocalStorage = getState();
+      const code_verifier = getCodeVerifier();
+      console.log('*** REACT GHOST AUTH STATUS ***', {
+        status,
+        currentProvider: provider,
+        code,
+        stateLocalStorage,
+        code_verifier,
+        lsToken,
+        config,
+      });
+    }
+  });
 
   const retriveToken = (code: string, code_verifier: string) => {
     if (provider) {
