@@ -24,7 +24,9 @@ function AutoLogin(props: Props) {
   const storedProvider = getProviderOidc();
 
   useEffect(() => {
-    tryLogin === true && changeStatus('LOGIN');
+    if (status === 'INIT' && tryLogin === true) {
+      changeStatus('LOGIN');
+    }
   }, [tryLogin]);
 
   useEffect(() => {
