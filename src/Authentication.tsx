@@ -143,7 +143,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       const code = params.code as string | undefined;
       const stateLocalStorage = getState();
       const code_verifier = getCodeVerifier();
-      debugger;
       console.log('*** REACT GHOST AUTH STATUS ***', {
         status,
         currentProvider: provider,
@@ -153,6 +152,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         lsToken,
         config,
       });
+      debugger;
     }
   });
 
