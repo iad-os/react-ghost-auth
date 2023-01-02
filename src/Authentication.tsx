@@ -311,7 +311,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             openIdInitialFlowUrl({
               authorization_endpoint,
               client_id,
-              redirect_uri: cookies.logged_in ?? redirect_uri,
+              redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
               requested_scopes,
               code_challenge,
               state: new_state,
@@ -328,7 +328,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           openIdInitialFlowUrl({
             authorization_endpoint,
             client_id,
-            redirect_uri: cookies.logged_in ?? redirect_uri,
+            redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
             requested_scopes,
             state: new_state,
             access_type,
