@@ -179,7 +179,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             onTokenRequest(axios, {
               token_endpoint,
               client_id,
-              redirect_uri: cookies.logged_in ?? redirect_uri,
+              redirect_uri: cookies.redirect_uri ?? redirect_uri,
               code,
               code_verifier,
             })
@@ -189,7 +189,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
                 token_endpoint,
                 stringfyQueryString({
                   grant_type: 'authorization_code',
-                  redirect_uri: cookies.logged_in ?? redirect_uri,
+                  redirect_uri: cookies.redirect_uri ?? redirect_uri,
                   code,
                   code_verifier,
                   ...(!client_secret && { client_id }),
@@ -215,7 +215,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             sameSite: 'lax',
             domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
           });
-          onRoute(cookies.logged_in ?? redirect_uri);
+          onRoute(cookies.redirect_uri ?? redirect_uri);
         })
         .catch(function (error) {
           console.error(error);
