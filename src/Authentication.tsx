@@ -143,6 +143,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       const code = params.code as string | undefined;
       const stateLocalStorage = getState();
       const code_verifier = getCodeVerifier();
+      debugger;
       console.log('*** REACT GHOST AUTH STATUS ***', {
         status,
         currentProvider: provider,
@@ -200,7 +201,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           onRoute(redirect_uri);
         })
         .catch(function (error) {
-          console.log(error);
+          console.error(error);
         })
         .finally(() => {
           clearCodeVerifierAndSate();
@@ -249,7 +250,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         setTokens(data, lsToken);
         return data;
       } catch (err) {
-        console.log(err);
+        console.error(err);
         logout();
         return {} as TokenResponse;
       }

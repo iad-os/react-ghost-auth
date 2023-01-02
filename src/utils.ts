@@ -71,7 +71,6 @@ export function parseQueryString(search: string) {
       params.get(value) || ''
     );
   }
-  console.log(paramObj);
   return paramObj;
 }
 
