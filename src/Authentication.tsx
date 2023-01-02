@@ -152,7 +152,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         lsToken,
         config,
       });
-      debugger;
     }
   });
 

@@ -4,11 +4,10 @@ import { getProviderOidc } from '../AuthStoreService';
 
 type Props = {
   children?: React.ReactNode;
-  tryLogin?: boolean;
 };
 
 function AutoLogin(props: Props) {
-  const { children, tryLogin } = props;
+  const { children } = props;
 
   const [showChildren, setShowChildren] = useState<boolean>(false);
 
@@ -17,17 +16,10 @@ function AutoLogin(props: Props) {
     isAuthenticated,
     status,
     providerInfo: providerInfoFn,
-    changeStatus,
   } = useAuthentication();
 
   const providerInfo = providerInfoFn();
   const storedProvider = getProviderOidc();
-
-  useEffect(() => {
-    if (status === 'INIT' && tryLogin === true) {
-      changeStatus('LOGIN');
-    }
-  }, [tryLogin]);
 
   useEffect(() => {
     const providers = providerInfo?.list;
