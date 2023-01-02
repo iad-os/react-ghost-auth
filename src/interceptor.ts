@@ -1,4 +1,4 @@
-import { AxiosRequestConfig, AxiosStatic } from 'axios';
+import { AxiosRequestConfig, AxiosStatic, RawAxiosRequestHeaders } from 'axios';
 import { AuthorizationProps } from './Authentication';
 import { getAccessToken } from './AuthStoreService';
 import { TokenResponse } from './models';
@@ -19,7 +19,7 @@ export function interceptor(
         config.headers = {
           ...config.headers,
           Authorization: `Bearer ${token}`,
-        };
+        } as RawAxiosRequestHeaders;
       }
       return config;
     },
@@ -42,7 +42,7 @@ export function interceptor(
             originalRequest.headers = {
               ...originalRequest.headers,
               Authorization: `Bearer ${res.access_token}`,
-            };
+            } as RawAxiosRequestHeaders;
             return axios(originalRequest);
           })
           .catch(error => Promise.reject(error));
