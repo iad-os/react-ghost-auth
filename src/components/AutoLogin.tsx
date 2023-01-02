@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useAuthentication } from '../Authentication';
+import { useCookies } from 'react-cookie';
+import { COOKIE_SESSION, useAuthentication } from '../Authentication';
 import { getProviderOidc } from '../AuthStoreService';
 
 type Props = {
@@ -11,15 +12,25 @@ function AutoLogin(props: Props) {
 
   const [showChildren, setShowChildren] = useState<boolean>(false);
 
+  const [cookies] = useCookies([COOKIE_SESSION]);
+
   const {
     login,
     isAuthenticated,
     status,
     providerInfo: providerInfoFn,
+    changeStatus,
   } = useAuthentication();
 
   const providerInfo = providerInfoFn();
   const storedProvider = getProviderOidc();
+
+  useEffect(() => {
+    const { ga_session } = cookies;
+    if (ga_session && status === 'INIT') {
+      changeStatus('LOGIN');
+    }
+  }, []);
 
   useEffect(() => {
     const providers = providerInfo?.list;
@@ -36,7 +47,7 @@ function AutoLogin(props: Props) {
     } else {
       setShowChildren(false);
     }
-  }, [status]);
+  }, [status, cookies]);
 
   return <div>{showChildren && children}</div>;
 }

@@ -32,6 +32,7 @@ import {
   pkceChallengeFromVerifier,
   stringfyQueryString,
 } from './utils';
+import { CookiesProvider, useCookies } from 'react-cookie';
 
 type ProviderInfoType = {
   selected: string;
@@ -81,6 +82,8 @@ export type AuthorizationProps = {
   enableLog?: boolean;
 };
 
+export const COOKIE_SESSION = 'ga_session';
+
 export default function AuthenticationProvider(props: AuthorizationProps) {
   const {
     axios,
@@ -94,6 +97,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     onError,
     enableLog = false,
   } = props;
+
+  const [cookies, setCookie, removeCookie] = useCookies([COOKIE_SESSION]);
 
   const providerNameList = Object.keys(config.providers || {}).map(k => k);
 
@@ -197,6 +202,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         .then(function (data: TokenResponse) {
           setTokens(data, lsToken);
           setStatus('LOGGED');
+          setCookie('ga_session', data.id_token, {
+            maxAge: data.refresh_expires_in,
+          });
           onRoute(redirect_uri);
         })
         .catch(function (error) {
@@ -247,6 +255,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         const data: TokenResponse = await refreshTokenFn();
         setStatus('LOGGED');
         setTokens(data, lsToken);
+        setCookie('ga_session', data.id_token, {
+          maxAge: data.refresh_expires_in,
+        });
         return data;
       } catch (err) {
         console.error(err);
@@ -312,6 +323,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const logout = () => {
+    removeCookie('ga_session');
     if (provider) {
       clear();
       const { end_session_endpoint, redirect_logout_uri, redirect_uri } =
@@ -343,18 +355,20 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       : undefined;
 
   return (
-    <AutenticationContext.Provider
-      value={{
-        login,
-        logout,
-        isAuthenticated,
-        status,
-        changeStatus,
-        providerInfo,
-      }}
-    >
-      {children}
-    </AutenticationContext.Provider>
+    <CookiesProvider>
+      <AutenticationContext.Provider
+        value={{
+          login,
+          logout,
+          isAuthenticated,
+          status,
+          changeStatus,
+          providerInfo,
+        }}
+      >
+        {children}
+      </AutenticationContext.Provider>
+    </CookiesProvider>
   );
 }
 
