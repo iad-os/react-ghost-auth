@@ -84,7 +84,7 @@ export type AuthorizationProps = {
   overrideRedirectUri?: boolean;
 };
 
-export const COOKIE_SESSION = 'logged_in';
+export const COOKIE_SESSION = 'SESSION_COOKIE';
 
 export default function AuthenticationProvider(props: AuthorizationProps) {
   const {
@@ -349,7 +349,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const logout = () => {
-    removeCookie('logged_in');
+    removeCookie('SESSION_COOKIE');
     if (provider) {
       clear();
       const { end_session_endpoint, redirect_logout_uri, redirect_uri } =
@@ -370,12 +370,12 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     const secure = window.location.protocol.toLowerCase() === 'https:';
     const sHost = window.location.hostname.split('.').reverse();
     const domain = sHost.length > 1 ? `.${sHost[1]}.${sHost[0]}` : sHost[0];
-    setCookie('logged_in', id_token, {
-      expires: addOneYear(new Date()),
-      domain,
+    setCookie('SESSION_COOKIE', id_token, {
       path: '/',
-      secure,
-      ...(secure ? { sameSite: 'strict' } : {}),
+      sameSite: true,
+      secure: true,
+      maxAge: 60 * 60 * 24 * 365,
+      domain: window.location.hostname,
     });
   }
 
