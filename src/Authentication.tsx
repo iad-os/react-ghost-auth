@@ -7,18 +7,21 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useCookies } from 'react-cookie';
 import {
-  clear,
+  cleanAfterRedirect,
+  cleanAll,
   clearCodeVerifierAndSate,
   getAccessToken,
   getCodeVerifier,
   getIdToken,
   getProviderOidc,
+  getRedirectUri,
   getRefreshToken,
   getState,
   setCodeVerifier,
+  setLoggedIn,
   setProviderOidc,
+  setRedirectUri,
   setState as setStateLocalStorage,
   setTokens,
 } from './AuthStoreService';
@@ -82,9 +85,6 @@ export type AuthorizationProps = {
   enableLog?: boolean;
   overrideRedirectUri?: boolean;
 };
-
-export const COOKIE_SESSION = 'SESSION_COOKIE';
-
 export default function AuthenticationProvider(props: AuthorizationProps) {
   const {
     axios,
@@ -99,11 +99,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     enableLog = false,
     overrideRedirectUri = false,
   } = props;
-
-  const [cookies, setCookie, removeCookie] = useCookies([
-    COOKIE_SESSION,
-    'redirect_uri',
-  ]);
 
   const currentUri = window.location.href.split('?')[0];
 
@@ -174,14 +169,15 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       const BASIC_TOKEN = `Basic ${window.btoa(
         `${client_id}:${client_secret}`
       )}`;
+      const localRedirectUri = decodeURIComponent(
+        getRedirectUri() ?? redirect_uri
+      );
       const tokenRequest = onTokenRequest
         ? () =>
             onTokenRequest(axios, {
               token_endpoint,
               client_id,
-              redirect_uri: decodeURIComponent(
-                cookies.redirect_uri ?? redirect_uri
-              ),
+              redirect_uri: localRedirectUri,
               code,
               code_verifier,
             })
@@ -191,9 +187,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
                 token_endpoint,
                 stringfyQueryString({
                   grant_type: 'authorization_code',
-                  redirect_uri: decodeURIComponent(
-                    cookies.redirect_uri ?? redirect_uri
-                  ),
+                  redirect_uri: localRedirectUri,
                   code,
                   code_verifier,
                   ...(!client_secret && { client_id }),
@@ -213,18 +207,14 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         .then(function (data: TokenResponse) {
           setTokens(data, lsToken);
           setStatus('LOGGED');
-          addLogginInCookie(data.id_token);
-          setTimeout(
-            () =>
-              onRoute(decodeURIComponent(cookies.redirect_uri ?? redirect_uri)),
-            800
-          );
+          setLoggedIn(data.id_token);
+          onRoute(localRedirectUri);
         })
-        .catch(function (error) {
+        .catch(error => {
           console.error(error);
         })
         .finally(() => {
-          clearCodeVerifierAndSate();
+          cleanAfterRedirect();
         });
     } else {
       throw Error('OIDC Provider not found');
@@ -268,7 +258,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         const data: TokenResponse = await refreshTokenFn();
         setStatus('LOGGED');
         setTokens(data, lsToken);
-        addLogginInCookie(data.id_token);
+        setLoggedIn(data.id_token);
         return data;
       } catch (err) {
         console.error(err);
@@ -292,91 +282,60 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         requested_scopes,
         access_type,
       } = _provider;
-      const secure = window.location.protocol.toLowerCase() === 'https';
-      setCookie(
-        'redirect_uri',
-        overrideRedirectUri ? currentUri : redirect_uri,
-        {
-          maxAge: 180,
-          domain: window.location.hostname,
-          path: '/',
-          secure,
-          ...(secure ? { sameSite: 'strict' } : {}),
-        }
-      );
 
-      setTimeout(() => {
-        if (_provider.pkce) {
-          const new_code_verifier = generateRandomString();
-          const new_state = generateRandomString();
-          setStateLocalStorage(new_state);
-          setCodeVerifier(new_code_verifier);
-          pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
-            window.location.replace(
-              openIdInitialFlowUrl({
-                authorization_endpoint,
-                client_id,
-                redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
-                requested_scopes,
-                code_challenge,
-                state: new_state,
-                code_challenge_method: 'S256',
-                access_type,
-              })
-            );
-          });
-        } else {
-          const new_state = makeid(64);
-          setStateLocalStorage(new_state);
-          setCodeVerifier('NO_PKCE');
+      setRedirectUri(overrideRedirectUri ? currentUri : redirect_uri);
+      if (_provider.pkce) {
+        const new_code_verifier = generateRandomString();
+        const new_state = generateRandomString();
+        setStateLocalStorage(new_state);
+        setCodeVerifier(new_code_verifier);
+        pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
           window.location.replace(
             openIdInitialFlowUrl({
               authorization_endpoint,
               client_id,
               redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
               requested_scopes,
+              code_challenge,
               state: new_state,
+              code_challenge_method: 'S256',
               access_type,
             })
           );
-        }
-      }, 800);
+        });
+      } else {
+        const new_state = makeid(64);
+        setStateLocalStorage(new_state);
+        setCodeVerifier('NO_PKCE');
+        window.location.replace(
+          openIdInitialFlowUrl({
+            authorization_endpoint,
+            client_id,
+            redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
+            requested_scopes,
+            state: new_state,
+            access_type,
+          })
+        );
+      }
     } else {
-      clear();
+      cleanAll();
       throw new Error('OIDC Provider not found');
     }
   };
 
   const logout = () => {
-    removeCookie('SESSION_COOKIE');
     if (provider) {
-      clear();
+      cleanAll();
       const { end_session_endpoint, redirect_logout_uri, redirect_uri } =
         provider;
-      setTimeout(
-        () =>
-          (window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
-            redirect_logout_uri ?? redirect_uri
-          }`),
-        800
-      );
+      window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
+        redirect_logout_uri ?? redirect_uri
+      }`;
     } else {
       throw new Error('OIDC Provider not found');
     }
   };
-
-  function addLogginInCookie(id_token: string) {
-    const secure = window.location.protocol.toLowerCase() === 'https:';
-    const sHost = window.location.hostname.split('.').reverse();
-    const domain = sHost.length > 1 ? `.${sHost[1]}.${sHost[0]}` : sHost[0];
-    setCookie('SESSION_COOKIE', id_token, {
-      path: '/',
-      sameSite: true,
-      secure: true,
-      maxAge: 60 * 60 * 24 * 365,
-      domain: window.location.hostname,
-    });
-  }
 
   const isAuthenticated = (): boolean => {
     return !!getAccessToken();

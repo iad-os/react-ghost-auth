@@ -9,8 +9,8 @@ import LogginIn from './components/LogginIn';
 import Public from './components/Public';
 import RequireAuth from './components/RequireAuth';
 import { TokenResponse, AuthenticationConfig } from './models';
-import ReactGhostAuthProvider from './ReactGhostAuthProvider';
-export default ReactGhostAuthProvider;
+
+export default AuthenticationProvider;
 
 export { useAuthentication, useToken, useUserInfo };
 export type { AuthenticationConfig, TokenResponse };

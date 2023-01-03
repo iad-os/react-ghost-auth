@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useCookies } from 'react-cookie';
-import { COOKIE_SESSION, useAuthentication } from '../Authentication';
-import { getProviderOidc } from '../AuthStoreService';
+import { useAuthentication } from '../Authentication';
+import { getLoggedIn, getProviderOidc } from '../AuthStoreService';
 
 type Props = {
   children?: React.ReactNode;
@@ -11,8 +10,6 @@ function AutoLogin(props: Props) {
   const { children } = props;
 
   const [showChildren, setShowChildren] = useState<boolean>(false);
-
-  const [cookies] = useCookies([COOKIE_SESSION]);
 
   const {
     login,
@@ -26,12 +23,11 @@ function AutoLogin(props: Props) {
   const storedProvider = getProviderOidc();
 
   useEffect(() => {
-    console.log('COOKIE_SESSION', COOKIE_SESSION);
-    const { SESSION_COOKIE } = cookies;
-    if (SESSION_COOKIE && status === 'INIT') {
+    const loggedIn = getLoggedIn();
+    if (loggedIn && status === 'INIT') {
       changeStatus('LOGIN');
     }
-  }, [cookies.SESSION_COOKIE]);
+  }, []);
 
   useEffect(() => {
     const providers = providerInfo?.list;
@@ -48,7 +44,7 @@ function AutoLogin(props: Props) {
     } else {
       setShowChildren(false);
     }
-  }, [status, cookies]);
+  }, [status]);
 
   return <div>{showChildren && children}</div>;
 }
