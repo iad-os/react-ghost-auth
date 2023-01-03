@@ -306,7 +306,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       setCookie(
         'redirect_uri',
         overrideRedirectUri ? currentUri : redirect_uri,
-        { maxAge: 180, domain: window.location.hostname }
+        { maxAge: 180, domain: window.location.hostname, path: '/' }
       );
 
       setTimeout(() => {
