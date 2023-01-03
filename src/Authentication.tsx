@@ -369,7 +369,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   function addLogginInCookie(id_token: string) {
     const secure = window.location.protocol.toLowerCase() === 'https';
     const sHost = window.location.hostname.split('.').reverse();
-    const domain = sHost.length > 1 ? `${sHost[1]}.${sHost[0]}` : sHost[0];
+    const domain = sHost.length > 1 ? `.${sHost[1]}.${sHost[0]}` : sHost[0];
     setCookie('logged_in', id_token, {
       expires: addOneYear(new Date()),
       domain,
