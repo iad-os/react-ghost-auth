@@ -81,3 +81,8 @@ export function stringfyQueryString(params: any) {
     })
     .join('&');
 }
+
+export function addOneYear(date: Date) {
+  date.setFullYear(date.getFullYear() + 1);
+  return date;
+}

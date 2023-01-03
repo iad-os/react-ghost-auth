@@ -24,6 +24,7 @@ import {
 } from './AuthStoreService';
 import { AuthenticationConfig, EStatus, TokenResponse } from './models';
 import {
+  addOneYear,
   base64decode,
   generateRandomString,
   makeid,
@@ -213,11 +214,15 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         .then(function (data: TokenResponse) {
           setTokens(data, lsToken);
           setStatus('LOGGED');
-          setCookie('logged_in', data.id_token, {
-            maxAge: 60 * 60 * 24 * 365,
+          setCookie('logged_in', 'true', {
+            expires: addOneYear(new Date()),
             domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
           });
-          onRoute(decodeURIComponent(cookies.redirect_uri ?? redirect_uri));
+          setTimeout(
+            () =>
+              onRoute(decodeURIComponent(cookies.redirect_uri ?? redirect_uri)),
+            250
+          );
         })
         .catch(function (error) {
           console.error(error);
@@ -267,8 +272,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         const data: TokenResponse = await refreshTokenFn();
         setStatus('LOGGED');
         setTokens(data, lsToken);
-        setCookie('logged_in', data.id_token, {
-          maxAge: 60 * 60 * 24 * 365,
+        setCookie('logged_in', 'true', {
+          expires: addOneYear(new Date()),
           domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
         });
         return data;
@@ -336,7 +341,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             })
           );
         }
-      }, 1000);
+      }, 250);
     } else {
       clear();
       throw new Error('OIDC Provider not found');
