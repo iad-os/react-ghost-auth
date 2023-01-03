@@ -215,7 +215,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           setStatus('LOGGED');
           setCookie('logged_in', data.id_token, {
             maxAge: 60 * 60 * 24 * 365,
-            sameSite: 'lax',
             domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
           });
           onRoute(decodeURIComponent(cookies.redirect_uri ?? redirect_uri));
@@ -270,7 +269,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         setTokens(data, lsToken);
         setCookie('logged_in', data.id_token, {
           maxAge: 60 * 60 * 24 * 365,
-          sameSite: 'lax',
           domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
         });
         return data;
