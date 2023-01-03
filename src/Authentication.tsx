@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { interceptor } from './interceptor';
+import { useCookies } from 'react-cookie';
 import {
   clear,
   clearCodeVerifierAndSate,
@@ -22,9 +22,9 @@ import {
   setState as setStateLocalStorage,
   setTokens,
 } from './AuthStoreService';
+import { interceptor } from './interceptor';
 import { AuthenticationConfig, EStatus, TokenResponse } from './models';
 import {
-  addOneYear,
   base64decode,
   generateRandomString,
   makeid,
@@ -33,7 +33,6 @@ import {
   pkceChallengeFromVerifier,
   stringfyQueryString,
 } from './utils';
-import { CookiesProvider, useCookies } from 'react-cookie';
 
 type ProviderInfoType = {
   selected: string;
