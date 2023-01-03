@@ -223,7 +223,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           setTimeout(
             () =>
               onRoute(decodeURIComponent(cookies.redirect_uri ?? redirect_uri)),
-            250
+            500
           );
         })
         .catch(function (error) {
@@ -344,7 +344,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             })
           );
         }
-      }, 1000);
+      }, 800);
     } else {
       clear();
       throw new Error('OIDC Provider not found');
@@ -352,14 +352,18 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const logout = () => {
-    removeCookie('logged_in');
     if (provider) {
+      removeCookie('logged_in');
       clear();
       const { end_session_endpoint, redirect_logout_uri, redirect_uri } =
         provider;
-      window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
-        redirect_logout_uri ?? redirect_uri
-      }`;
+      setTimeout(
+        () =>
+          (window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
+            redirect_logout_uri ?? redirect_uri
+          }`),
+        800
+      );
     } else {
       throw new Error('OIDC Provider not found');
     }
