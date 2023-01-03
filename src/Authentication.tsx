@@ -212,6 +212,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
       tokenRequest()
         .then(function (data: TokenResponse) {
+          debugger;
           setTokens(data, lsToken);
           setStatus('LOGGED');
           setCookie('logged_in', 'true', {
