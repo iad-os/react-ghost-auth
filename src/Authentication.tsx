@@ -215,10 +215,13 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           debugger;
           setTokens(data, lsToken);
           setStatus('LOGGED');
+          const secure = window.location.protocol.toLowerCase() === 'https';
           setCookie('logged_in', data.id_token, {
             expires: addOneYear(new Date()),
             domain: window.location.hostname,
             path: '/',
+            secure,
+            ...(secure ? { sameSite: 'strict' } : {}),
           });
           setTimeout(
             () =>
@@ -274,10 +277,13 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         const data: TokenResponse = await refreshTokenFn();
         setStatus('LOGGED');
         setTokens(data, lsToken);
+        const secure = window.location.protocol.toLowerCase() === 'https';
         setCookie('logged_in', data.id_token, {
           expires: addOneYear(new Date()),
           domain: window.location.hostname,
           path: '/',
+          secure,
+          ...(secure ? { sameSite: 'strict' } : {}),
         });
         return data;
       } catch (err) {
@@ -352,8 +358,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const logout = () => {
+    removeCookie('logged_in');
     if (provider) {
-      removeCookie('logged_in');
       clear();
       const { end_session_endpoint, redirect_logout_uri, redirect_uri } =
         provider;
