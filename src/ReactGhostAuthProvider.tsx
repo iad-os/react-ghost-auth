@@ -1,6 +1,6 @@
 import React from 'react';
 import { CookiesProvider } from 'react-cookie';
-import AuthenticationProvider, { AuthorizationProps } from '../Authentication';
+import AuthenticationProvider, { AuthorizationProps } from './Authentication';
 
 export type ReactGhostAuthProviderProps = AuthorizationProps;
 
