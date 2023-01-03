@@ -31,7 +31,7 @@ function AutoLogin(props: Props) {
     if (loggedIn && status === 'INIT') {
       changeStatus('LOGIN');
     }
-  }, []);
+  }, [status]);
 
   useEffect(() => {
     const providers = providerInfo?.list;
