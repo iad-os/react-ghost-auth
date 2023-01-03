@@ -16,7 +16,6 @@ function AutoLogin(props: Props) {
     isAuthenticated,
     status,
     providerInfo: providerInfoFn,
-    changeStatus,
   } = useAuthentication();
 
   const providerInfo = providerInfoFn();
@@ -29,28 +28,32 @@ function AutoLogin(props: Props) {
       status,
     });
     if (loggedIn && status === 'INIT') {
-      changeStatus('LOGIN');
+      autologin();
     }
   }, [status]);
 
   useEffect(() => {
-    const providers = providerInfo?.list;
     if (status === 'LOGIN' && !isAuthenticated()) {
-      if (storedProvider !== null) {
-        setShowChildren(false);
-        login(storedProvider);
-      } else if (!children && providers?.length === 1) {
-        setShowChildren(false);
-        login(providers[0]);
-      } else {
-        setShowChildren(true);
-      }
+      autologin();
     } else {
       setShowChildren(false);
     }
   }, [status]);
 
   return <div>{showChildren && children}</div>;
+
+  function autologin() {
+    const providers = providerInfo?.list;
+    if (storedProvider !== null) {
+      setShowChildren(false);
+      login(storedProvider);
+    } else if (!children && providers?.length === 1) {
+      setShowChildren(false);
+      login(providers[0]);
+    } else {
+      setShowChildren(true);
+    }
+  }
 }
 
 export default AutoLogin;

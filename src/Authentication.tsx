@@ -341,10 +341,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     return !!getAccessToken();
   };
 
-  const changeStatus = useCallback(
-    (status: EStatus) => setStatus(status),
-    [status]
-  );
+  const changeStatus = (status: EStatus) => setStatus(status);
 
   const providerInfo = () =>
     providers
