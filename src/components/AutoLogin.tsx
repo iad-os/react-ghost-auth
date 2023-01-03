@@ -26,12 +26,12 @@ function AutoLogin(props: Props) {
   const storedProvider = getProviderOidc();
 
   useEffect(() => {
-    debugger;
+    console.log('COOKIE_SESSION', COOKIE_SESSION);
     const { SESSION_COOKIE } = cookies;
     if (SESSION_COOKIE && status === 'INIT') {
       changeStatus('LOGIN');
     }
-  }, []);
+  }, [cookies.SESSION_COOKIE]);
 
   useEffect(() => {
     const providers = providerInfo?.list;

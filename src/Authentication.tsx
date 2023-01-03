@@ -217,7 +217,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           setTimeout(
             () =>
               onRoute(decodeURIComponent(cookies.redirect_uri ?? redirect_uri)),
-            500
+            800
           );
         })
         .catch(function (error) {
