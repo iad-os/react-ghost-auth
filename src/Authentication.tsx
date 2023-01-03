@@ -215,7 +215,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           setStatus('LOGGED');
           setCookie('logged_in', data.id_token, {
             maxAge: 60 * 60 * 24 * 365,
-            httpOnly: true,
             sameSite: 'lax',
             domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
           });
@@ -271,7 +270,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         setTokens(data, lsToken);
         setCookie('logged_in', data.id_token, {
           maxAge: 60 * 60 * 24 * 365,
-          httpOnly: true,
           sameSite: 'lax',
           domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
         });
@@ -302,43 +300,45 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       setCookie(
         'redirect_uri',
         overrideRedirectUri ? currentUri : redirect_uri,
-        { maxAge: 60, domain: window.location.hostname }
+        { maxAge: 180, domain: window.location.hostname }
       );
 
-      if (_provider.pkce) {
-        const new_code_verifier = generateRandomString();
-        const new_state = generateRandomString();
-        setStateLocalStorage(new_state);
-        setCodeVerifier(new_code_verifier);
-        pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
+      setTimeout(() => {
+        if (_provider.pkce) {
+          const new_code_verifier = generateRandomString();
+          const new_state = generateRandomString();
+          setStateLocalStorage(new_state);
+          setCodeVerifier(new_code_verifier);
+          pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
+            window.location.replace(
+              openIdInitialFlowUrl({
+                authorization_endpoint,
+                client_id,
+                redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
+                requested_scopes,
+                code_challenge,
+                state: new_state,
+                code_challenge_method: 'S256',
+                access_type,
+              })
+            );
+          });
+        } else {
+          const new_state = makeid(64);
+          setStateLocalStorage(new_state);
+          setCodeVerifier('NO_PKCE');
           window.location.replace(
             openIdInitialFlowUrl({
               authorization_endpoint,
               client_id,
               redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
               requested_scopes,
-              code_challenge,
               state: new_state,
-              code_challenge_method: 'S256',
               access_type,
             })
           );
-        });
-      } else {
-        const new_state = makeid(64);
-        setStateLocalStorage(new_state);
-        setCodeVerifier('NO_PKCE');
-        window.location.replace(
-          openIdInitialFlowUrl({
-            authorization_endpoint,
-            client_id,
-            redirect_uri: overrideRedirectUri ? currentUri : redirect_uri,
-            requested_scopes,
-            state: new_state,
-            access_type,
-          })
-        );
-      }
+        }
+      }, 1000);
     } else {
       clear();
       throw new Error('OIDC Provider not found');
