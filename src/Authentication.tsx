@@ -217,7 +217,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           setStatus('LOGGED');
           setCookie('logged_in', 'true', {
             maxAge: 60 * 60,
-            domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
+            domain: window.location.hostname,
           });
           setTimeout(
             () =>
@@ -275,7 +275,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         setTokens(data, lsToken);
         setCookie('logged_in', 'true', {
           maxAge: 60 * 60,
-          domain: process.env.REACT_APP_GA_PREFIX || window.location.hostname,
+          domain: window.location.hostname,
         });
         return data;
       } catch (err) {
