@@ -212,17 +212,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
       tokenRequest()
         .then(function (data: TokenResponse) {
-          debugger;
           setTokens(data, lsToken);
           setStatus('LOGGED');
-          const secure = window.location.protocol.toLowerCase() === 'https';
-          setCookie('logged_in', data.id_token, {
-            expires: addOneYear(new Date()),
-            domain: window.location.hostname,
-            path: '/',
-            secure,
-            ...(secure ? { sameSite: 'strict' } : {}),
-          });
+          addLogginInCookie(data.id_token);
           setTimeout(
             () =>
               onRoute(decodeURIComponent(cookies.redirect_uri ?? redirect_uri)),
@@ -277,14 +269,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         const data: TokenResponse = await refreshTokenFn();
         setStatus('LOGGED');
         setTokens(data, lsToken);
-        const secure = window.location.protocol.toLowerCase() === 'https';
-        setCookie('logged_in', data.id_token, {
-          expires: addOneYear(new Date()),
-          domain: window.location.hostname,
-          path: '/',
-          secure,
-          ...(secure ? { sameSite: 'strict' } : {}),
-        });
+        addLogginInCookie(data.id_token);
         return data;
       } catch (err) {
         console.error(err);
@@ -380,6 +365,19 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       throw new Error('OIDC Provider not found');
     }
   };
+
+  function addLogginInCookie(id_token: string) {
+    const secure = window.location.protocol.toLowerCase() === 'https';
+    const sHost = window.location.hostname.split('.').reverse();
+    const domain = sHost.length > 1 ? `${sHost[1]}.${sHost[0]}` : sHost[0];
+    setCookie('logged_in', id_token, {
+      expires: addOneYear(new Date()),
+      domain,
+      path: '/',
+      secure,
+      ...(secure ? { sameSite: 'strict' } : {}),
+    });
+  }
 
   const isAuthenticated = (): boolean => {
     return !!getAccessToken();
