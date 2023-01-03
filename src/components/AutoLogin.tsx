@@ -24,6 +24,10 @@ function AutoLogin(props: Props) {
 
   useEffect(() => {
     const loggedIn = getLoggedIn();
+    console.log({
+      loggedIn,
+      status,
+    });
     if (loggedIn && status === 'INIT') {
       changeStatus('LOGIN');
     }
