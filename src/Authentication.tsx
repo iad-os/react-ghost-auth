@@ -398,20 +398,18 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       : undefined;
 
   return (
-    <CookiesProvider>
-      <AutenticationContext.Provider
-        value={{
-          login,
-          logout,
-          isAuthenticated,
-          status,
-          changeStatus,
-          providerInfo,
-        }}
-      >
-        {children}
-      </AutenticationContext.Provider>
-    </CookiesProvider>
+    <AutenticationContext.Provider
+      value={{
+        login,
+        logout,
+        isAuthenticated,
+        status,
+        changeStatus,
+        providerInfo,
+      }}
+    >
+      {children}
+    </AutenticationContext.Provider>
   );
 }
 
