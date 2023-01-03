@@ -215,9 +215,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           debugger;
           setTokens(data, lsToken);
           setStatus('LOGGED');
-          setCookie('logged_in', 'true', {
-            maxAge: 60 * 60,
+          setCookie('logged_in', data.id_token, {
+            expires: addOneYear(new Date()),
             domain: window.location.hostname,
+            path: '/',
           });
           setTimeout(
             () =>
@@ -273,9 +274,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         const data: TokenResponse = await refreshTokenFn();
         setStatus('LOGGED');
         setTokens(data, lsToken);
-        setCookie('logged_in', 'true', {
-          maxAge: 60 * 60,
+        setCookie('logged_in', data.id_token, {
+          expires: addOneYear(new Date()),
           domain: window.location.hostname,
+          path: '/',
         });
         return data;
       } catch (err) {
@@ -342,7 +344,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             })
           );
         }
-      }, 250);
+      }, 1000);
     } else {
       clear();
       throw new Error('OIDC Provider not found');
