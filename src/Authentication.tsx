@@ -308,11 +308,17 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         requested_scopes,
         access_type,
       } = _provider;
-
+      const secure = window.location.protocol.toLowerCase() === 'https';
       setCookie(
         'redirect_uri',
         overrideRedirectUri ? currentUri : redirect_uri,
-        { maxAge: 180, domain: window.location.hostname, path: '/' }
+        {
+          maxAge: 180,
+          domain: window.location.hostname,
+          path: '/',
+          secure,
+          ...(secure ? { sameSite: 'strict' } : {}),
+        }
       );
 
       setTimeout(() => {
