@@ -18,12 +18,6 @@ import { AuthenticationConfig, EStatus, OpenIDToken, UserInfo } from './model';
 
 import * as oauth from 'oauth4webapi';
 
-type ProviderInfoType = {
-  selected: string;
-  list: string[];
-  defaultProvider?: string;
-};
-
 type AuthCtxType = {
   login: (provider?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -45,17 +39,9 @@ export type AuthorizationProps = {
   overrideRedirectUri?: (location: Location) => string;
   onRoute: (route: string, overrided: boolean) => void;
   onError?: (message: string) => void;
-  enableLog?: boolean;
 };
 export default function AuthenticationProvider(props: AuthorizationProps) {
-  const {
-    config,
-    children,
-    onRoute,
-    onError,
-    enableLog = false,
-    overrideRedirectUri,
-  } = props;
+  const { config, children, overrideRedirectUri } = props;
 
   const { location } = window;
 
@@ -105,25 +91,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   }, []);
 
-  /*  
-  useEffect(() => {
-    if (enableLog) {
-      const params = parseQueryString(window.location.search);
-      const code = params.code as string | undefined;
-      const stateLocalStorage = getState();
-      const code_verifier = getCodeVerifier();
-      console.log('*** REACT GHOST AUTH STATUS ***', {
-        status,
-        currentProvider: provider,
-        code,
-        stateLocalStorage,
-        code_verifier,
-        lsToken,
-        config,
-      });
-    }
-  });
-*/
   const retriveToken = async (
     code_verifier: string,
     params: URLSearchParams
@@ -169,7 +136,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const refreshToken = async () => {
     const issuer = new URL(currentIssuer);
-    const { as, client, issuerInfo } = await getAuthServer(issuer);
+    const { as, client } = await getAuthServer(issuer);
 
     if (openIDToken?.refresh_token) {
       const request = await oauth.refreshTokenGrantRequest(

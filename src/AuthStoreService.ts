@@ -2,7 +2,6 @@ const HOSTNAME = process.env.REACT_APP_GA_PREFIX || window.location.hostname;
 const STATE = `${HOSTNAME}_state`;
 const CODE_VERIFIER = `${HOSTNAME}_code_verifier`;
 const ISSUER = `${HOSTNAME}_issuer`;
-const ACCESS_TOKEN = `${HOSTNAME}_access_token`;
 const REDIRECT_URI = `${HOSTNAME}_reditect_uri`;
 const LOGGED_IN = `${HOSTNAME}_logged_id`;
 

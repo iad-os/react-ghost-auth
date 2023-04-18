@@ -1,8 +1,4 @@
-import {
-  OpenIDTokenEndpointResponse,
-  TokenEndpointResponse,
-  UserInfoResponse,
-} from 'oauth4webapi';
+import { OpenIDTokenEndpointResponse, UserInfoResponse } from 'oauth4webapi';
 
 export type UserInfo = UserInfoResponse;
 
@@ -11,12 +7,12 @@ export type OpenIDToken = OpenIDTokenEndpointResponse;
 export type AuthenticationConfig = {
   default?: string;
   issuers: {
-    [key in string]: ProviderOptions;
+    [key in string]: Issuer;
   };
   serviceUrl?: string;
 };
 
-export type ProviderOptions = {
+export type Issuer = {
   client_id: string;
   requested_scopes: string;
   access_type?: string;
