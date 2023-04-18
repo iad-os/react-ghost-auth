@@ -10,7 +10,7 @@ type Props = {
 function RequireAuth(props: Props) {
   const { authRequired: _authRequired = true, children } = props;
 
-  const { status, changeStatus, isAuthenticated } = useAuthentication();
+  const { status, changeStatus } = useAuthentication();
 
   const [authRequired, setAuthRequired] = useState<boolean>(false);
 

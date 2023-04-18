@@ -8,12 +8,12 @@ import LoggedIn from './components/LoggedIn';
 import LogginIn from './components/LogginIn';
 import Public from './components/Public';
 import RequireAuth from './components/RequireAuth';
-import { TokenResponse, AuthenticationConfig } from './models';
+import { UserInfo, OpenIDToken, AuthenticationConfig } from './model';
 import { getLoggedIn } from './AuthStoreService';
 
 export default AuthenticationProvider;
 
 export { useAuthentication, useToken, useUserInfo };
-export type { AuthenticationConfig, TokenResponse };
+export type { UserInfo, OpenIDToken, AuthenticationConfig };
 export { AutoLogin, LoggedIn, LogginIn, Public, RequireAuth };
 export { getLoggedIn };

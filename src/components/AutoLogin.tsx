@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getLoggedIn, getIssuer } from '../AuthStoreService';
 import { useAuthentication } from '../Authentication';
-import { getLoggedIn, getProviderOidc } from '../AuthStoreService';
 
 type Props = {
   children?: React.ReactNode;
@@ -11,25 +11,15 @@ function AutoLogin(props: Props) {
 
   const [showChildren, setShowChildren] = useState<boolean>(false);
 
-  const {
-    login,
-    isAuthenticated,
-    status,
-    providerInfo: providerInfoFn,
-  } = useAuthentication();
+  const { login, isAuthenticated, status } = useAuthentication();
 
-  const providerInfo = providerInfoFn();
-  const storedProvider = getProviderOidc();
+  const issuer = getIssuer();
 
   useEffect(() => {
     const loggedIn = getLoggedIn();
     if (loggedIn && status === 'INIT') {
       autologin();
-    }
-  }, [status]);
-
-  useEffect(() => {
-    if (status === 'LOGIN' && !isAuthenticated()) {
+    } else if (status === 'LOGIN' && !isAuthenticated) {
       autologin();
     } else {
       setShowChildren(false);
@@ -39,13 +29,12 @@ function AutoLogin(props: Props) {
   return <div>{showChildren && children}</div>;
 
   function autologin() {
-    const providers = providerInfo?.list;
-    if (storedProvider !== null) {
+    if (issuer !== null) {
       setShowChildren(false);
-      login(storedProvider);
-    } else if (!children && providers?.length === 1) {
+      login(issuer);
+    } else if (!children) {
       setShowChildren(false);
-      login(providers[0]);
+      login();
     } else {
       setShowChildren(true);
     }

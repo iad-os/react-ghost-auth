@@ -9,7 +9,7 @@ function LoggedIn(props: Props) {
   const { children } = props;
   const { isAuthenticated, status } = useAuthentication();
 
-  return <div>{isAuthenticated() && status === 'LOGGED' && children}</div>;
+  return <div>{isAuthenticated && status === 'LOGGED' && children}</div>;
 }
 
 export default LoggedIn;
