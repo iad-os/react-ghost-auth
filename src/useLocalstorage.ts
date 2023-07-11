@@ -2,7 +2,7 @@ import { TokenResponse } from './models';
 
 const HOSTNAME = `@${window.location.hostname}`;
 
-const NON_LO_SO = {
+const LS = {
   state: `${HOSTNAME}_state`,
   code_verifier: `${HOSTNAME}_code_verifier`,
   provider_oidc: `${HOSTNAME}_provider_oidc`,
@@ -11,18 +11,18 @@ const NON_LO_SO = {
   logged_in: `${HOSTNAME}_logged_id`,
 };
 
-type NonLoSO = typeof NON_LO_SO;
+type LSType = typeof LS;
 
 const useLocalstorage = () => {
-  const save = <T extends keyof NonLoSO>(key: T, value: string) => {
+  const save = <T extends keyof LSType>(key: T, value: string) => {
     localStorage.setItem(key, value);
   };
 
-  const load = <T extends keyof NonLoSO>(key: T) => {
+  const load = <T extends keyof LSType>(key: T) => {
     return localStorage.getItem(key);
   };
 
-  const clear = <T extends keyof NonLoSO>(keys?: T[]) => {
+  const clear = <T extends keyof LSType>(keys?: T[]) => {
     if (keys) {
       keys.forEach(key => localStorage.removeItem(key));
     } else {
