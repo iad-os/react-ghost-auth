@@ -24,6 +24,8 @@ type AuthCtxType = {
   changeStatus: (status: EStatus) => void;
   refreshToken: () => Promise<TokenResponse>;
   token?: TokenResponse;
+  providers: AuthenticationConfig['providers'];
+  currentProvider?: ProviderOptions;
 };
 
 const AutenticationContext = React.createContext<AuthCtxType>(
@@ -291,6 +293,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         changeStatus,
         refreshToken,
         token,
+        currentProvider,
+        providers,
       }}
     >
       {children}

@@ -27,6 +27,7 @@ export type AuthenticationConfig = {
 
 export type ProviderOptions = {
   issuer: string;
+  name: string;
   authorization_endpoint: string;
   token_endpoint: string;
   client_id: string;
@@ -37,7 +38,7 @@ export type ProviderOptions = {
   end_session_endpoint: string;
   client_secret?: string;
   pkce?: boolean;
-  defualt: boolean;
+  defualt?: boolean;
 };
 
 export type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
