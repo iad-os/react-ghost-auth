@@ -1,31 +1,4 @@
-import { AxiosStatic } from 'axios';
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import {
-  cleanAfterRedirect,
-  cleanAll,
-  clearCodeVerifierAndSate,
-  getAccessToken,
-  getCodeVerifier,
-  getIdToken,
-  getProviderOidc,
-  getRedirectUri,
-  getRefreshToken,
-  getState,
-  setCodeVerifier,
-  setLoggedIn,
-  setProviderOidc,
-  setRedirectUri,
-  setState as setStateLocalStorage,
-  setTokens,
-} from './AuthStoreService';
-import { interceptor } from './interceptor';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthenticationConfig, EStatus, TokenResponse } from './models';
 import {
   base64decode,
@@ -36,6 +9,7 @@ import {
   pkceChallengeFromVerifier,
   stringfyQueryString,
 } from './utils';
+import useLocalstorage from './useLocalstorage';
 
 type ProviderInfoType = {
   selected: string;
@@ -50,6 +24,8 @@ type AuthCtxType = {
   status: EStatus;
   changeStatus: (status: EStatus) => void;
   providerInfo: () => ProviderInfoType | undefined;
+  refreshToken: () => Promise<TokenResponse>;
+  token?: TokenResponse;
 };
 
 const AutenticationContext = React.createContext<AuthCtxType>(
@@ -57,44 +33,20 @@ const AutenticationContext = React.createContext<AuthCtxType>(
 );
 
 export type AuthorizationProps = {
-  axios: AxiosStatic;
   config: AuthenticationConfig;
   children: React.ReactNode;
   overrideRedirectUri?: (location: Location) => string;
   onRoute: (route: string, overrided: boolean) => void;
-  needAuthorization?: (serviceUrl: string, requestUrl: string) => boolean;
-  onTokenRequest?: (
-    axios: AxiosStatic,
-    data: {
-      token_endpoint: string;
-      client_id: string;
-      redirect_uri: string;
-      code: string;
-      code_verifier: string;
-    }
-  ) => Promise<TokenResponse>;
-  onRefreshTokenRequest?: (
-    axios: AxiosStatic,
-    data: {
-      token_endpoint: string;
-      client_id: string;
-      refresh_token: string;
-    }
-  ) => Promise<TokenResponse>;
-  lsToken?: boolean;
+  saveOnLocalStorage?: boolean;
   onError?: (message: string) => void;
   enableLog?: boolean;
 };
 export default function AuthenticationProvider(props: AuthorizationProps) {
   const {
-    axios,
-    onTokenRequest,
-    onRefreshTokenRequest,
     config,
     children,
-    needAuthorization,
     onRoute,
-    lsToken = false,
+    saveOnLocalStorage = false,
     onError,
     enableLog = false,
     overrideRedirectUri,
@@ -112,12 +64,16 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       : '',
   } = config;
 
+  const localStorage = useLocalstorage();
+
   const [status, setStatus] = useState<AuthCtxType['status']>(
-    !!getState() ? 'LOGGING' : 'INIT'
+    !!localStorage.load('state') ? 'LOGGING' : 'INIT'
   );
 
+  const [token, setToken] = useState<TokenResponse>();
+
   const provider = useMemo(() => {
-    const providerName = getProviderOidc();
+    const providerName = localStorage.load('provider_oidc');
     return providerName ? providers[providerName] : undefined;
   }, []);
 
@@ -126,11 +82,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   useEffect(() => {
     if (!onceCall.current) {
       onceCall.current = true;
-      interceptor(axios, serviceUrl ?? '/', refreshToken, needAuthorization);
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateLocalStorage = getState();
-      const code_verifier = getCodeVerifier();
+      const stateLocalStorage = localStorage.load('state');
+      const code_verifier = localStorage.load('code_verifier');
       if (code && stateLocalStorage && code_verifier && provider) {
         setStatus('LOGGING');
         retriveToken(code, code_verifier);
@@ -148,21 +103,21 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     if (enableLog) {
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateLocalStorage = getState();
-      const code_verifier = getCodeVerifier();
+      const stateLocalStorage = localStorage.load('state');
+      const code_verifier = localStorage.load('code_verifier');
       console.log('*** REACT GHOST AUTH STATUS ***', {
         status,
         currentProvider: provider,
         code,
         stateLocalStorage,
         code_verifier,
-        lsToken,
+        lsToken: saveOnLocalStorage,
         config,
       });
     }
   });
 
-  const retriveToken = (code: string, code_verifier: string) => {
+  const retriveToken = (code: string, code_verifier: string): Promise<void> => {
     if (provider) {
       const { client_id, token_endpoint, client_secret, redirect_uri } =
         provider;
@@ -170,95 +125,65 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         `${client_id}:${client_secret}`
       )}`;
       const localRedirectUri = decodeURIComponent(
-        getRedirectUri() ?? redirect_uri
+        localStorage.load('redirect_uri') ?? redirect_uri
       );
-      const tokenRequest = onTokenRequest
-        ? () =>
-            onTokenRequest(axios, {
-              token_endpoint,
-              client_id,
-              redirect_uri: localRedirectUri,
-              code,
-              code_verifier,
-            })
-        : () =>
-            axios
-              .post(
-                token_endpoint,
-                stringfyQueryString({
-                  grant_type: 'authorization_code',
-                  redirect_uri: localRedirectUri,
-                  code,
-                  code_verifier,
-                  ...(!client_secret && { client_id }),
-                }),
-                {
-                  headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    ...(client_secret && {
-                      Authorization: BASIC_TOKEN,
-                    }),
-                  },
-                }
-              )
-              .then(res => res.data as TokenResponse);
 
-      tokenRequest()
-        .then(function (data: TokenResponse) {
-          setTokens(data, lsToken);
-          setStatus('LOGGED');
-          setLoggedIn(data.id_token);
+      return fetch(token_endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          ...(client_secret && {
+            Authorization: BASIC_TOKEN,
+          }),
+        },
+        body: stringfyQueryString({
+          grant_type: 'authorization_code',
+          redirect_uri: localRedirectUri,
+          code,
+          code_verifier,
+          ...(!client_secret && { client_id }),
+        }),
+      })
+        .then(res => res.json() as Promise<TokenResponse>)
+        .then(data => {
+          saveToken(data);
           onRoute(localRedirectUri, !!overrideRedirectUri);
         })
         .catch(error => {
           console.error(error);
         })
         .finally(() => {
-          cleanAfterRedirect();
+          localStorage.clear(['code_verifier', 'redirect_uri', 'state']);
         });
     } else {
       throw Error('OIDC Provider not found');
     }
   };
 
-  const refreshToken = async () => {
+  const refreshToken = async (): Promise<TokenResponse> => {
     if (provider) {
       const { client_id, token_endpoint, client_secret } = provider;
       const BASIC_TOKEN = `Basic ${window.btoa(
         `${client_id}:${client_secret}`
       )}`;
-      const refreshTokenFn = onRefreshTokenRequest
-        ? () =>
-            onRefreshTokenRequest(axios, {
-              client_id,
-              token_endpoint,
-              refresh_token: getRefreshToken() || '',
-            })
-        : () =>
-            axios
-              .post(
-                token_endpoint,
-                stringfyQueryString({
-                  grant_type: 'refresh_token',
-                  refresh_token: getRefreshToken(),
-                  ...(!client_secret && { client_id }),
-                }),
-                {
-                  headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    ...(client_secret && {
-                      Authorization: BASIC_TOKEN,
-                    }),
-                  },
-                }
-              )
-              .then(res => res.data as TokenResponse);
+
+      const data = await fetch(token_endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          ...(client_secret && {
+            Authorization: BASIC_TOKEN,
+          }),
+        },
+        body: stringfyQueryString({
+          grant_type: 'refresh_token',
+          refresh_token: token?.refresh_token,
+          ...(!client_secret && { client_id }),
+        }),
+      }).then(res => res.json() as Promise<TokenResponse>);
 
       try {
-        const data: TokenResponse = await refreshTokenFn();
-        setStatus('LOGGED');
-        setTokens(data, lsToken);
-        setLoggedIn(data.id_token);
+        saveToken(data);
         return data;
       } catch (err) {
         console.error(err);
@@ -270,11 +195,18 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   };
 
+  const saveToken = (data: TokenResponse) => {
+    setToken(() => data);
+    saveOnLocalStorage && localStorage.save('access_token', data.access_token);
+    localStorage.save('logged_in', data.id_token);
+    setStatus(() => 'LOGGED');
+  };
+
   const login = (providerName?: string) => {
     const _providerName = providerName ?? defaultProviderName ?? '';
     const _provider = _providerName ? providers[_providerName] : undefined;
     if (_provider && _providerName) {
-      setProviderOidc(_providerName);
+      localStorage.save('provider_oidc', _providerName);
       const {
         authorization_endpoint,
         client_id,
@@ -283,14 +215,16 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         access_type,
       } = _provider;
 
-      setRedirectUri(
+      localStorage.save(
+        'redirect_uri',
         overrideRedirectUri ? overrideRedirectUri(location) : redirect_uri
       );
+
       if (_provider.pkce) {
         const new_code_verifier = generateRandomString();
         const new_state = generateRandomString();
-        setStateLocalStorage(new_state);
-        setCodeVerifier(new_code_verifier);
+        localStorage.save('state', new_state);
+        localStorage.save('code_verifier', new_code_verifier);
         pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
           window.location.replace(
             openIdInitialFlowUrl({
@@ -309,8 +243,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         });
       } else {
         const new_state = makeid(64);
-        setStateLocalStorage(new_state);
-        setCodeVerifier('NO_PKCE');
+        localStorage.save('state', new_state);
+        localStorage.save('code_verifier', 'NO_PKCE');
         window.location.replace(
           openIdInitialFlowUrl({
             authorization_endpoint,
@@ -325,14 +259,14 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         );
       }
     } else {
-      cleanAll();
+      localStorage.clear();
       throw new Error('OIDC Provider not found');
     }
   };
 
   const logout = () => {
     if (provider) {
-      cleanAll();
+      localStorage.clear();
       const { end_session_endpoint, redirect_logout_uri, redirect_uri } =
         provider;
       window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
@@ -344,7 +278,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const isAuthenticated = (): boolean => {
-    return !!getAccessToken();
+    return !!token;
   };
 
   const changeStatus = (status: EStatus) => setStatus(status);
@@ -367,6 +301,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         status,
         changeStatus,
         providerInfo,
+        refreshToken,
+        token,
       }}
     >
       {children}
@@ -378,19 +314,17 @@ export function useAuthentication() {
   return useContext(AutenticationContext);
 }
 
-export function useToken(): string {
-  const { isAuthenticated } = useAuthentication();
-  const token = getAccessToken();
+export function useToken() {
+  const { isAuthenticated, refreshToken, token } = useAuthentication();
   if (!isAuthenticated() || !token) {
     throw new Error('User not authenticated!');
   }
-
-  return token;
+  return { token, refreshToken };
 }
 
 export function useUserInfo<T = any>(): T {
-  const { isAuthenticated } = useAuthentication();
-  const idToken = getIdToken();
+  const { isAuthenticated, token } = useAuthentication();
+  const idToken = token?.id_token;
 
   if (!isAuthenticated() || !idToken) {
     throw new Error('User not authenticated!');

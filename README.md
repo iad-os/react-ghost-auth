@@ -134,6 +134,3 @@ The components below can be used as wrappers to trigger preffered behaviour
 | LogginIn | A wrapper component that exposes its content **while** the log in process is running|
 | LoggedIn | A wrapper component that exposes its content after the log in process is successful|
 | AutoLogin | A wrapper or standalone component that initiates the login process automatically on page/site reload|
-
-
-
