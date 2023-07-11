@@ -9,11 +9,12 @@ import LogginIn from './components/LogginIn';
 import Public from './components/Public';
 import RequireAuth from './components/RequireAuth';
 import { TokenResponse, AuthenticationConfig } from './models';
+import useLocalstorage from './useLocalstorage';
 
 
 export default AuthenticationProvider;
 
-export { useAuthentication, useToken, useUserInfo };
+export { useAuthentication, useToken, useUserInfo, useLocalstorage };
 export type { AuthenticationConfig, TokenResponse };
 export { AutoLogin, LoggedIn, LogginIn, Public, RequireAuth };
 
