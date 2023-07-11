@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthentication } from '../Authentication';
-import { getLoggedIn, getProviderOidc } from '../AuthStoreService';
+import useLocalstorage from '../useLocalstorage';
+
 
 type Props = {
   children?: React.ReactNode;
@@ -8,6 +9,8 @@ type Props = {
 
 function AutoLogin(props: Props) {
   const { children } = props;
+
+  const ls = useLocalstorage();
 
   const [showChildren, setShowChildren] = useState<boolean>(false);
 
@@ -18,11 +21,8 @@ function AutoLogin(props: Props) {
     providerInfo: providerInfoFn,
   } = useAuthentication();
 
-  const providerInfo = providerInfoFn();
-  const storedProvider = getProviderOidc();
-
   useEffect(() => {
-    const loggedIn = getLoggedIn();
+    const loggedIn = ls.load('logged_in');
     if (loggedIn && status === 'INIT') {
       autologin();
     }
@@ -35,10 +35,10 @@ function AutoLogin(props: Props) {
       setShowChildren(false);
     }
   }, [status]);
-
-  return <div>{showChildren && children}</div>;
-
-  function autologin() {
+  
+  const autologin = () => {
+    const providerInfo = providerInfoFn();
+    const storedProvider = ls.load('provider_oidc');
     const providers = providerInfo?.list;
     if (storedProvider !== null) {
       setShowChildren(false);
@@ -50,6 +50,9 @@ function AutoLogin(props: Props) {
       setShowChildren(true);
     }
   }
+
+  return <div>{showChildren && children}</div>;
+
 }
 
 export default AutoLogin;
