@@ -1,4 +1,3 @@
-import { TokenResponse } from './models';
 
 const HOSTNAME = `@${window.location.hostname}`;
 
