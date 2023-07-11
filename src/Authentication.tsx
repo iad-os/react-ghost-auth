@@ -1,5 +1,10 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AuthenticationConfig, EStatus, TokenResponse } from './models';
+import {
+  AuthenticationConfig,
+  EStatus,
+  ProviderOptions,
+  TokenResponse,
+} from './models';
 import {
   base64decode,
   generateRandomString,
@@ -11,19 +16,12 @@ import {
 } from './utils';
 import useLocalstorage from './useLocalstorage';
 
-type ProviderInfoType = {
-  selected: string;
-  list: string[];
-  defaultProvider?: string;
-};
-
 type AuthCtxType = {
   login: (provider?: string) => void;
   logout: () => void;
   isAuthenticated: () => boolean;
   status: EStatus;
   changeStatus: (status: EStatus) => void;
-  providerInfo: () => ProviderInfoType | undefined;
   refreshToken: () => Promise<TokenResponse>;
   token?: TokenResponse;
 };
@@ -54,15 +52,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const { location } = window;
 
-  const providerNameList = Object.keys(config.providers || {}).map(k => k);
-
-  const {
-    providers,
-    serviceUrl,
-    default: defaultProviderName = providerNameList.length > 0
-      ? providerNameList[0]
-      : '',
-  } = config;
+  const { providers } = config;
 
   const localStorage = useLocalstorage();
 
@@ -72,9 +62,13 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const [token, setToken] = useState<TokenResponse>();
 
-  const provider = useMemo(() => {
-    const providerName = localStorage.load('provider_oidc');
-    return providerName ? providers[providerName] : undefined;
+  const currentProvider = useMemo<ProviderOptions | undefined>(() => {
+    const lsp = localStorage.load('provider_issuer');
+    return providers.find(i => i.issuer === lsp);
+  }, []);
+
+  const defaultProvider = useMemo<ProviderOptions | undefined>(() => {
+    return providers.find(i => i.defualt);
   }, []);
 
   const onceCall = useRef<boolean>(false);
@@ -86,7 +80,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       const code = params.code as string | undefined;
       const stateLocalStorage = localStorage.load('state');
       const code_verifier = localStorage.load('code_verifier');
-      if (code && stateLocalStorage && code_verifier && provider) {
+      if (code && stateLocalStorage && code_verifier && currentProvider) {
         setStatus('LOGGING');
         retriveToken(code, code_verifier);
       } else if (isAuthenticated()) {
@@ -107,7 +101,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       const code_verifier = localStorage.load('code_verifier');
       console.log('*** REACT GHOST AUTH STATUS ***', {
         status,
-        currentProvider: provider,
+        currentProvider: currentProvider,
         code,
         stateLocalStorage,
         code_verifier,
@@ -118,9 +112,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   });
 
   const retriveToken = (code: string, code_verifier: string): Promise<void> => {
-    if (provider) {
+    if (currentProvider) {
       const { client_id, token_endpoint, client_secret, redirect_uri } =
-        provider;
+        currentProvider;
       const BASIC_TOKEN = `Basic ${window.btoa(
         `${client_id}:${client_secret}`
       )}`;
@@ -161,8 +155,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const refreshToken = async (): Promise<TokenResponse> => {
-    if (provider) {
-      const { client_id, token_endpoint, client_secret } = provider;
+    if (currentProvider) {
+      const { client_id, token_endpoint, client_secret } = currentProvider;
       const BASIC_TOKEN = `Basic ${window.btoa(
         `${client_id}:${client_secret}`
       )}`;
@@ -202,25 +196,29 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     setStatus(() => 'LOGGED');
   };
 
-  const login = (providerName?: string) => {
-    const _providerName = providerName ?? defaultProviderName ?? '';
-    const _provider = _providerName ? providers[_providerName] : undefined;
-    if (_provider && _providerName) {
-      localStorage.save('provider_oidc', _providerName);
+  const login = (issuer?: string) => {
+    let provider: ProviderOptions | undefined;
+    if (issuer) {
+      provider = providers.find(p => p.issuer === issuer);
+    } else {
+      provider = defaultProvider ?? providers[0];
+    }
+    if (provider) {
+      localStorage.save('provider_issuer', provider.issuer);
       const {
         authorization_endpoint,
         client_id,
         redirect_uri,
         requested_scopes,
         access_type,
-      } = _provider;
+      } = provider;
 
       localStorage.save(
         'redirect_uri',
         overrideRedirectUri ? overrideRedirectUri(location) : redirect_uri
       );
 
-      if (_provider.pkce) {
+      if (provider.pkce) {
         const new_code_verifier = generateRandomString();
         const new_state = generateRandomString();
         localStorage.save('state', new_state);
@@ -265,10 +263,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const logout = () => {
-    if (provider) {
+    if (currentProvider) {
       localStorage.clear();
       const { end_session_endpoint, redirect_logout_uri, redirect_uri } =
-        provider;
+        currentProvider;
       window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
         redirect_logout_uri ?? redirect_uri
       }`;
@@ -283,15 +281,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const changeStatus = (status: EStatus) => setStatus(status);
 
-  const providerInfo = () =>
-    providers
-      ? ({
-          selected: provider?.name,
-          list: Object.keys(providers),
-          defaultProvider: defaultProviderName,
-        } as ProviderInfoType)
-      : undefined;
-
   return (
     <AutenticationContext.Provider
       value={{
@@ -300,7 +289,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         isAuthenticated,
         status,
         changeStatus,
-        providerInfo,
         refreshToken,
         token,
       }}

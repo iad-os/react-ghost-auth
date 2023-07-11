@@ -1,10 +1,9 @@
-
 const HOSTNAME = `@${window.location.hostname}`;
 
 const LS = {
   state: `${HOSTNAME}_state`,
   code_verifier: `${HOSTNAME}_code_verifier`,
-  provider_oidc: `${HOSTNAME}_provider_oidc`,
+  provider_issuer: `${HOSTNAME}_provider_issuer`,
   access_token: `${HOSTNAME}_access_token`,
   redirect_uri: `${HOSTNAME}_reditect_uri`,
   logged_in: `${HOSTNAME}_logged_id`,

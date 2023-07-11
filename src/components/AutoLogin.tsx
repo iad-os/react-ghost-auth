@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useAuthentication } from '../Authentication';
 import useLocalstorage from '../useLocalstorage';
 
-
 type Props = {
   children?: React.ReactNode;
 };
@@ -14,12 +13,7 @@ function AutoLogin(props: Props) {
 
   const [showChildren, setShowChildren] = useState<boolean>(false);
 
-  const {
-    login,
-    isAuthenticated,
-    status,
-    providerInfo: providerInfoFn,
-  } = useAuthentication();
+  const { login, isAuthenticated, status } = useAuthentication();
 
   useEffect(() => {
     const loggedIn = ls.load('logged_in');
@@ -35,24 +29,17 @@ function AutoLogin(props: Props) {
       setShowChildren(false);
     }
   }, [status]);
-  
+
   const autologin = () => {
-    const providerInfo = providerInfoFn();
-    const storedProvider = ls.load('provider_oidc');
-    const providers = providerInfo?.list;
-    if (storedProvider !== null) {
+    if (!children) {
       setShowChildren(false);
-      login(storedProvider);
-    } else if (!children && providers?.length === 1) {
-      setShowChildren(false);
-      login(providers[0]);
+      login();
     } else {
       setShowChildren(true);
     }
-  }
+  };
 
   return <div>{showChildren && children}</div>;
-
 }
 
 export default AutoLogin;

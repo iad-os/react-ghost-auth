@@ -22,15 +22,11 @@ export type TokenResponse = {
 };
 
 export type AuthenticationConfig = {
-  default?: string;
-  providers: {
-    [key in string]: ProviderOptions;
-  };
-  serviceUrl?: string;
+  providers: ProviderOptions[];
 };
 
 export type ProviderOptions = {
-  name: string;
+  issuer: string;
   authorization_endpoint: string;
   token_endpoint: string;
   client_id: string;
@@ -41,6 +37,7 @@ export type ProviderOptions = {
   end_session_endpoint: string;
   client_secret?: string;
   pkce?: boolean;
+  defualt: boolean;
 };
 
 export type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
