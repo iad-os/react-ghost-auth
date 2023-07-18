@@ -8,25 +8,15 @@ type Props = {
 };
 
 function RequireAuth(props: Props) {
-  const { authRequired: _authRequired = true, children } = props;
+  const { authRequired = true, children } = props;
 
-  const { status, changeStatus, isAuthenticated } = useAuthentication();
-
-  const [authRequired, setAuthRequired] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (typeof _authRequired === 'function') {
-      _authRequired().then(res => setAuthRequired(res));
-    } else {
-      setAuthRequired(_authRequired);
-    }
-  }, []);
+  const { status, changeStatus } = useAuthentication();
 
   useEffect(() => {
     if (status === 'INIT' && authRequired) {
       changeStatus('LOGIN');
     }
-  }, [authRequired]);
+  }, [authRequired, status]);
 
   return (
     <div>
