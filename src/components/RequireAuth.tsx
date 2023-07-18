@@ -16,7 +16,13 @@ function RequireAuth(props: Props) {
     if (status === 'INIT' && authRequired) {
       changeStatus('LOGIN');
     }
-  }, [authRequired, status]);
+  }, []);
+
+  useEffect(() => {
+    if (status === 'INIT' && authRequired) {
+      changeStatus('LOGIN');
+    }
+  }, [status, authRequired]);
 
   return (
     <div>
