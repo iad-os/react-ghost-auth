@@ -213,6 +213,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         redirect_uri,
         requested_scopes,
         access_type,
+        kc_idp_hint,
       } = provider;
 
       localStorage.save(
@@ -238,6 +239,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
               state: new_state,
               code_challenge_method: 'S256',
               access_type,
+              kc_idp_hint,
             })
           );
         });
@@ -255,6 +257,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             requested_scopes,
             state: new_state,
             access_type,
+            kc_idp_hint,
           })
         );
       }
@@ -265,13 +268,22 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const logout = () => {
-    if (currentProvider) {
+    if (currentProvider && token) {
       localStorage.clear();
-      const { end_session_endpoint, redirect_logout_uri, redirect_uri } =
-        currentProvider;
-      window.location.href = `${end_session_endpoint}?post_logout_redirect_uri=${
-        redirect_logout_uri ?? redirect_uri
-      }`;
+      const {
+        end_session_endpoint,
+        redirect_logout_uri,
+        redirect_uri,
+        kc_idp_hint: initiating_idp,
+      } = currentProvider;
+      const id_token_hint = token.id_token;
+      const post_logout_redirect_uri = `${redirect_logout_uri ?? redirect_uri}`;
+      const logoutUrl = `${end_session_endpoint}?${stringfyQueryString({
+        post_logout_redirect_uri,
+        initiating_idp,
+        id_token_hint,
+      })}`;
+      window.location.href = logoutUrl;
     } else {
       throw new Error('OIDC Provider not found');
     }

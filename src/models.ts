@@ -7,6 +7,7 @@ export type InitFlowUrlType = {
   state: string;
   code_challenge_method?: 'S256';
   access_type?: string;
+  kc_idp_hint?: string;
 };
 
 export type TokenResponse = {
@@ -39,6 +40,7 @@ export type ProviderOptions = {
   client_secret?: string;
   pkce?: boolean;
   defualt?: boolean;
+  kc_idp_hint?: string;
 };
 
 export type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
