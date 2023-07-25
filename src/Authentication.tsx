@@ -163,22 +163,21 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         `${client_id}:${client_secret}`
       )}`;
 
-      const data = await fetch(token_endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          ...(client_secret && {
-            Authorization: BASIC_TOKEN,
-          }),
-        },
-        body: stringfyQueryString({
-          grant_type: 'refresh_token',
-          refresh_token: token?.refresh_token,
-          ...(!client_secret && { client_id }),
-        }),
-      }).then(res => res.json() as Promise<TokenResponse>);
-
       try {
+        const data = await fetch(token_endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            ...(client_secret && {
+              Authorization: BASIC_TOKEN,
+            }),
+          },
+          body: stringfyQueryString({
+            grant_type: 'refresh_token',
+            refresh_token: token?.refresh_token,
+            ...(!client_secret && { client_id }),
+          }),
+        }).then(res => res.json() as Promise<TokenResponse>);
         saveToken(data);
         return data;
       } catch (err) {
