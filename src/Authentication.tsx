@@ -156,15 +156,14 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   };
 
-  const refreshToken = async (): Promise<TokenResponse> => {
+  const refreshToken = (): Promise<TokenResponse> => {
     if (currentProvider) {
       const { client_id, token_endpoint, client_secret } = currentProvider;
       const BASIC_TOKEN = `Basic ${window.btoa(
         `${client_id}:${client_secret}`
       )}`;
-
-      try {
-        const data = await fetch(token_endpoint, {
+      return new Promise<TokenResponse>((resolve, reject) =>
+        fetch(token_endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -177,14 +176,18 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             refresh_token: token?.refresh_token,
             ...(!client_secret && { client_id }),
           }),
-        }).then(res => res.json() as Promise<TokenResponse>);
-        saveToken(data);
-        return data;
-      } catch (err) {
-        console.error(err);
-        logout();
-        return {} as TokenResponse;
-      }
+        })
+          .then(res => res.json() as Promise<TokenResponse>)
+          .then(data => {
+            saveToken(data);
+            resolve(data);
+          })
+          .catch(error => {
+            reject(error);
+            console.error(error);
+            logout();
+          })
+      );
     } else {
       throw Error('OIDC Provider not found');
     }
