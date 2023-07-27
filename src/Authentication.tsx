@@ -1,7 +1,15 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   AuthenticationConfig,
   EStatus,
+  FetchError,
   ProviderOptions,
   TokenResponse,
 } from './models';
@@ -75,7 +83,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const onceCall = useRef<boolean>(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!onceCall.current) {
       onceCall.current = true;
       const params = parseQueryString(window.location.search);
@@ -140,7 +148,12 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           ...(!client_secret && { client_id }),
         }),
       })
-        .then(res => res.json() as Promise<TokenResponse>)
+        .then(res => {
+          if (res.ok) {
+            return res.json() as Promise<TokenResponse>;
+          }
+          throw new FetchError(res);
+        })
         .then(data => {
           saveToken(data);
           onRoute(localRedirectUri, !!overrideRedirectUri);
@@ -177,7 +190,12 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             ...(!client_secret && { client_id }),
           }),
         })
-          .then(res => res.json() as Promise<TokenResponse>)
+          .then(res => {
+            if (res.ok) {
+              return res.json() as Promise<TokenResponse>;
+            }
+            throw new FetchError(res);
+          })
           .then(data => {
             saveToken(data);
             resolve(data);

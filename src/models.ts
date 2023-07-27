@@ -44,3 +44,17 @@ export type ProviderOptions = {
 };
 
 export type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
+
+export class FetchError extends Error {
+  status: number = 400;
+  statusText: string = '';
+  data: unknown | undefined;
+  constructor(response: Response) {
+    super('Fetch error');
+    this.status = response.status;
+    this.statusText = response.statusText;
+    response.json().then(error => (this.data = error));
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, FetchError.prototype);
+  }
+}

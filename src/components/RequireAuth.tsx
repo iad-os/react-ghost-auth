@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { useAuthentication } from '../Authentication';
 import LoggedIn from './LoggedIn';
 

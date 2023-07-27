@@ -17,13 +17,10 @@ function AutoLogin(props: Props) {
 
   useEffect(() => {
     const loggedIn = ls.load('logged_in');
-    if (loggedIn && status === 'INIT') {
-      autologin();
-    }
-  }, [status]);
-
-  useEffect(() => {
-    if (status === 'LOGIN' && !isAuthenticated()) {
+    if (
+      (loggedIn && status === 'INIT') ||
+      (status === 'LOGIN' && !isAuthenticated())
+    ) {
       autologin();
     } else {
       setShowChildren(false);
