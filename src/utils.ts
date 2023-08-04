@@ -76,6 +76,7 @@ export function parseQueryString(search: string) {
 
 export function stringfyQueryString(params: any) {
   return Object.keys(params)
+    .filter(key => params[key] !== undefined && params[key] !== null)
     .map(key => {
       return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
     })
