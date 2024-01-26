@@ -13,14 +13,17 @@ function RequireAuth(props: RequireAuthPros) {
 
   const { autologin: autologinFn, isAuthenticated } = useAuthentication();
 
-  const hasAutologin = useMemo<boolean>(
-    () => autologin && !isAuthenticated(),
-    [autologin]
-  );
+  useEffect(() => {
+    if (autologin && !isAuthenticated()) {
+      autologinFn();
+    }
+  }, []);
 
   useEffect(() => {
-    hasAutologin && autologinFn();
-  }, [hasAutologin]);
+    if (autologin && !isAuthenticated()) {
+      autologinFn();
+    }
+  }, [autologin]);
 
   return <Logged in={children} out={notLogged} />;
 }
