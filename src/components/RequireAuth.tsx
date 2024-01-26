@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import Logged from './Logged';
 import { useAuthentication } from '../Authentication';
 
@@ -11,15 +11,16 @@ type RequireAuthPros = {
 function RequireAuth(props: RequireAuthPros) {
   const { children, loggedOut: notLogged, autologin = false } = props;
 
-  const { autologin: autologinFn } = useAuthentication();
+  const { autologin: autologinFn, isAuthenticated } = useAuthentication();
+
+  const hasAutologin = useMemo<boolean>(
+    () => autologin && !isAuthenticated(),
+    [autologin]
+  );
 
   useEffect(() => {
-    autologin && autologinFn();
-  }, []);
-
-  useEffect(() => {
-    autologin && autologinFn();
-  }, [autologin]);
+    hasAutologin && autologinFn();
+  }, [hasAutologin]);
 
   return <Logged in={children} out={notLogged} />;
 }
