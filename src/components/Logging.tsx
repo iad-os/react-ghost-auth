@@ -14,7 +14,7 @@ function Logging(props: LoggingProps) {
     [status]
   );
 
-  return <div>{logging && loggingIn}</div>;
+  return <React.Fragment>{logging && loggingIn}</React.Fragment>;
 }
 
 export default Logging;

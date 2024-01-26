@@ -16,9 +16,9 @@ function Logged(props: LoggedProps) {
   );
 
   if (authenticated) {
-    return loggedIn;
+    return <React.Fragment>{loggedIn}</React.Fragment>;
   } else {
-    return loggedOut ?? <></>;
+    return <React.Fragment>{loggedOut ?? <></>}</React.Fragment>;
   }
 }
 

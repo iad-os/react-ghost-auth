@@ -39,7 +39,7 @@ function AutoLogin(props: AutoLoginProps) {
     }
   };
 
-  return <div>{showChildren && children}</div>;
+  return <React.Fragment>{showChildren && children}</React.Fragment>;
 }
 
 export default AutoLogin;
