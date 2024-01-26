@@ -11,19 +11,24 @@ type RequireAuthPros = {
 function RequireAuth(props: RequireAuthPros) {
   const { children, loggedOut: notLogged, autologin = false } = props;
 
-  const { autologin: autologinFn, isAuthenticated } = useAuthentication();
+  const {
+    autologin: autologinFn,
+    isAuthenticated,
+    status,
+  } = useAuthentication();
+
+  const hasAutologin = useMemo<boolean>(
+    () => autologin && status === 'INIT' && !isAuthenticated(),
+    [autologin, status, isAuthenticated]
+  );
 
   useEffect(() => {
-    if (autologin && !isAuthenticated()) {
-      autologinFn();
+    if (hasAutologin) {
+      setTimeout(() => {
+        autologinFn();
+      }, 200);
     }
-  }, []);
-
-  useEffect(() => {
-    if (autologin && !isAuthenticated()) {
-      autologinFn();
-    }
-  }, [autologin]);
+  }, [hasAutologin]);
 
   return <Logged in={children} out={notLogged} />;
 }
