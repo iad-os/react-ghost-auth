@@ -130,7 +130,6 @@ The components below can be used as wrappers to trigger preffered behaviour
 | Component | Purpose |
 | ------ | ------ |
 | RequireAuth | A wrapper component that requires user to be authenticated before it's content is exposed|
-| Public | A wrapper component that exposes it's content, it doesn't require user to be logged in|
-| LogginIn | A wrapper component that exposes its content **while** the log in process is running|
-| LoggedIn | A wrapper component that exposes its content after the log in process is successful|
+| Logging | A wrapper component that exposes its content **while** the log in process is running|
+| Logged | A wrapper component that exposes its content after the log in process is successful|
 | AutoLogin | A wrapper or standalone component that initiates the login process automatically on page/site reload|

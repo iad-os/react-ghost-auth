@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useAuthentication } from '../Authentication';
 import useLocalstorage from '../useLocalstorage';
 
-type Props = {
+type AutoLoginProps = {
   children?: React.ReactNode;
 };
 
-function AutoLogin(props: Props) {
+function AutoLogin(props: AutoLoginProps) {
   const { children } = props;
 
   const ls = useLocalstorage();
@@ -17,10 +17,13 @@ function AutoLogin(props: Props) {
 
   useEffect(() => {
     const loggedIn = ls.load('logged_in');
-    if (
-      (loggedIn && status === 'INIT') ||
-      (status === 'LOGIN' && !isAuthenticated())
-    ) {
+    const provider = ls.load('provider_issuer');
+
+    if (status === 'INIT' && loggedIn && provider && !isAuthenticated()) {
+      // se trovo un utente che si è già connesso e il relativo issuer
+      login(provider);
+    } else if (status === 'LOGIN') {
+      // se sono in fase di login/autologin
       autologin();
     } else {
       setShowChildren(false);

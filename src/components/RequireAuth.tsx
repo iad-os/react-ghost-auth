@@ -1,35 +1,27 @@
-import React, { useEffect, useLayoutEffect } from 'react';
+import React, { useEffect } from 'react';
+import Logged from './Logged';
 import { useAuthentication } from '../Authentication';
-import LoggedIn from './LoggedIn';
 
-type Props = {
-  authRequired?: (() => Promise<boolean>) | boolean;
+type RequireAuthPros = {
   children: React.ReactNode;
+  loggedOut?: React.ReactNode;
+  autologin?: boolean;
 };
 
-function RequireAuth(props: Props) {
-  const { authRequired = true, children } = props;
+function RequireAuth(props: RequireAuthPros) {
+  const { children, loggedOut: notLogged, autologin = false } = props;
 
-  const { status, changeStatus } = useAuthentication();
+  const { autologin: autologinFn } = useAuthentication();
 
   useEffect(() => {
-    if (status === 'INIT' && authRequired) {
-      changeStatus('LOGIN');
-    }
+    autologin && autologinFn();
   }, []);
 
   useEffect(() => {
-    if (status === 'INIT' && authRequired) {
-      changeStatus('LOGIN');
-    }
-  }, [status, authRequired]);
+    autologin && autologinFn();
+  }, [autologin]);
 
-  return (
-    <div>
-      {authRequired && <LoggedIn>{children}</LoggedIn>}
-      {!authRequired && <div>{children}</div>}
-    </div>
-  );
+  return <Logged in={children} out={notLogged} />;
 }
 
 export default RequireAuth;

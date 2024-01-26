@@ -27,9 +27,9 @@ import useLocalstorage from './useLocalstorage';
 type AuthCtxType = {
   login: (provider?: string) => void;
   logout: () => void;
+  autologin: () => void;
   isAuthenticated: () => boolean;
   status: EStatus;
-  changeStatus: (status: EStatus) => void;
   refreshToken: () => Promise<TokenResponse>;
   token?: TokenResponse;
   providers: AuthenticationConfig['providers'];
@@ -75,7 +75,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   const currentProvider = useMemo<ProviderOptions | undefined>(() => {
     const lsp = localStorage.load('provider_issuer');
     return providers.find(i => i.issuer === lsp);
-  }, []);
+  }, [status, token]);
 
   const defaultProvider = useMemo<ProviderOptions | undefined>(() => {
     return providers.find(i => i.defualt);
@@ -121,6 +121,18 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   });
 
+  useEffect(() => {
+    if (token) {
+      saveOnLocalStorage &&
+        localStorage.save('access_token', token.access_token);
+      localStorage.save('logged_in', token.id_token);
+      setStatus(() => 'LOGGED');
+    } else {
+      //localStorage.clear();
+      setStatus(() => 'INIT');
+    }
+  }, [token]);
+
   const retriveToken = (code: string, code_verifier: string): Promise<void> => {
     if (currentProvider) {
       const { client_id, token_endpoint, client_secret, redirect_uri } =
@@ -155,7 +167,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           throw new FetchError(res);
         })
         .then(data => {
-          saveToken(data);
+          setToken(data);
           onRoute(localRedirectUri, !!overrideRedirectUri);
         })
         .catch(error => {
@@ -165,6 +177,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           localStorage.clear(['code_verifier', 'redirect_uri', 'state']);
         });
     } else {
+      setToken(undefined);
       throw Error('OIDC Provider not found');
     }
   };
@@ -197,7 +210,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             throw new FetchError(res);
           })
           .then(data => {
-            saveToken(data);
+            setToken(data);
             resolve(data);
           })
           .catch(error => {
@@ -207,15 +220,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           })
       );
     } else {
+      setToken(undefined);
       throw Error('OIDC Provider not found');
     }
-  };
-
-  const saveToken = (data: TokenResponse) => {
-    setToken(() => data);
-    saveOnLocalStorage && localStorage.save('access_token', data.access_token);
-    localStorage.save('logged_in', data.id_token);
-    setStatus(() => 'LOGGED');
   };
 
   const login = (issuer?: string) => {
@@ -225,6 +232,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     } else {
       provider = defaultProvider ?? providers[0];
     }
+    localStorage.clear();
     if (provider) {
       localStorage.save('provider_issuer', provider.issuer);
       const {
@@ -282,7 +290,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         );
       }
     } else {
-      localStorage.clear();
+      setToken(undefined);
       throw new Error('OIDC Provider not found');
     }
   };
@@ -313,7 +321,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     return !!token;
   };
 
-  const changeStatus = (status: EStatus) => setStatus(status);
+  const autologin = () => setStatus(() => 'LOGIN');
 
   return (
     <AutenticationContext.Provider
@@ -321,8 +329,8 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         login,
         logout,
         isAuthenticated,
+        autologin,
         status,
-        changeStatus,
         refreshToken,
         token,
         currentProvider,
