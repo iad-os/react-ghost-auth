@@ -18,15 +18,13 @@ function RequireAuth(props: RequireAuthPros) {
   } = useAuthentication();
 
   const hasAutologin = useMemo<boolean>(
-    () => autologin && status === 'INIT' && !isAuthenticated(),
-    [autologin, status, isAuthenticated]
+    () => autologin && status === 'LOGGED-OUT' && !isAuthenticated(),
+    [autologin, status]
   );
 
   useEffect(() => {
     if (hasAutologin) {
-      setTimeout(() => {
-        autologinFn();
-      }, 200);
+      autologinFn();
     }
   }, [hasAutologin]);
 

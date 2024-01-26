@@ -66,11 +66,11 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const localStorage = useLocalstorage();
 
-  const [status, setStatus] = useState<AuthCtxType['status']>(
-    !!localStorage.load('state') ? 'LOGGING' : 'INIT'
-  );
+  const [status, setStatus] = useState<AuthCtxType['status']>('INIT');
 
   const [token, setToken] = useState<TokenResponse>();
+
+  const loading = useMemo(() => status === 'INIT', [status]);
 
   const currentProvider = useMemo<ProviderOptions | undefined>(() => {
     const lsp = localStorage.load('provider_issuer');
@@ -94,16 +94,16 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         setStatus('LOGGING');
         retriveToken(code, code_verifier);
       } else if (isAuthenticated()) {
-        setStatus('LOGGED');
+        setStatus('LOGGED-IN');
       } else if (params.error) {
         onError && onError(params.error_description);
       } else {
-        setStatus('INIT');
+        setStatus('LOGGED-OUT');
       }
     }
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (enableLog) {
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
@@ -117,6 +117,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         code_verifier,
         lsToken: saveOnLocalStorage,
         config,
+        loading,
+        token,
+        isAuthenticated: isAuthenticated(),
       });
     }
   });
@@ -126,10 +129,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       saveOnLocalStorage &&
         localStorage.save('access_token', token.access_token);
       localStorage.save('logged_in', token.id_token);
-      setStatus(() => 'LOGGED');
-    } else {
-      //localStorage.clear();
-      setStatus(() => 'INIT');
+      setStatus(() => 'LOGGED-IN');
     }
   }, [token]);
 
@@ -318,7 +318,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const isAuthenticated = (): boolean => {
-    return !!token;
+    return !!token && status === 'LOGGED-IN';
   };
 
   const autologin = () => setStatus(() => 'LOGIN');
@@ -337,7 +337,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         providers,
       }}
     >
-      {children}
+      {!loading && children}
     </AutenticationContext.Provider>
   );
 }

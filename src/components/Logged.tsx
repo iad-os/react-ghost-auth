@@ -11,7 +11,7 @@ function Logged(props: LoggedProps) {
   const { isAuthenticated, status } = useAuthentication();
 
   const authenticated = useMemo(
-    () => status === 'LOGGED' && isAuthenticated(),
+    () => status === 'LOGGED-IN' && isAuthenticated(),
     [status]
   );
 

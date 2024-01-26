@@ -43,7 +43,7 @@ export type ProviderOptions = {
   kc_idp_hint?: string;
 };
 
-export type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED';
+export type EStatus = 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED-IN' | 'LOGGED-OUT';
 
 export class FetchError extends Error {
   status: number = 400;

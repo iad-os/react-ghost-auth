@@ -19,7 +19,7 @@ function AutoLogin(props: AutoLoginProps) {
     const loggedIn = ls.load('logged_in');
     const provider = ls.load('provider_issuer');
 
-    if (status === 'INIT' && loggedIn && provider && !isAuthenticated()) {
+    if (status === 'LOGGED-OUT' && loggedIn && provider && !isAuthenticated()) {
       // se trovo un utente che si è già connesso e il relativo issuer
       login(provider);
     } else if (status === 'LOGIN') {
