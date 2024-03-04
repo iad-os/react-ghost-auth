@@ -24,7 +24,7 @@ const useLocalstorage = () => {
     if (keys) {
       keys.forEach(key => localStorage.removeItem(key));
     } else {
-      localStorage.clear();
+      Object.keys(LS).forEach(key => localStorage.removeItem(key));
     }
   };
 
