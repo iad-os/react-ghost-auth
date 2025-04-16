@@ -21,7 +21,7 @@ function AutoLogin(props: AutoLoginProps) {
 
     if (status === 'LOGGED-OUT' && loggedIn && provider && !isAuthenticated()) {
       // se trovo un utente che si è già connesso e il relativo issuer
-      login(provider).then();
+      login(provider);
     } else if (status === 'LOGIN') {
       // se sono in fase di login/autologin
       autologin();
@@ -33,7 +33,7 @@ function AutoLogin(props: AutoLoginProps) {
   const autologin = () => {
     if (!children) {
       setShowChildren(false);
-      login().then();
+      login();
     } else {
       setShowChildren(true);
     }

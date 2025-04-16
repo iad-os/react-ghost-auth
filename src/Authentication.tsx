@@ -92,7 +92,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       const code_verifier = localStorage.load('code_verifier');
       if (code && stateLocalStorage && code_verifier && currentProvider) {
         setStatus('LOGGING');
-        retriveToken(code, code_verifier).then();
+        retriveToken(code, code_verifier);
       } else if (isAuthenticated()) {
         setStatus('LOGGED-IN');
       } else if (params.error) {
