@@ -29,14 +29,11 @@ export type AuthenticationConfig = {
 export type ProviderOptions = {
   issuer: string;
   name: string;
-  authorization_endpoint: string;
-  token_endpoint: string;
   client_id: string;
   requested_scopes: string;
+  redirect_logout_uri: string;
   access_type?: string;
   redirect_uri: string;
-  redirect_logout_uri?: string;
-  end_session_endpoint: string;
   client_secret?: string;
   pkce?: boolean;
   defualt?: boolean;
@@ -58,3 +55,13 @@ export class FetchError extends Error {
     Object.setPrototypeOf(this, FetchError.prototype);
   }
 }
+
+export type WellKnown = {
+  issuer: string;
+  authorization_endpoint: string;
+  token_endpoint: string;
+  introspection_endpoint: string;
+  userinfo_endpoint: string;
+  end_session_endpoint: string;
+  [key: string]: unknown;
+};

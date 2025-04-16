@@ -23,10 +23,10 @@ import {
   stringfyQueryString,
 } from './utils';
 import useLocalstorage from './useLocalstorage';
-
+import { getWellKnown } from './services';
 type AuthCtxType = {
-  login: (provider?: string) => void;
-  logout: () => void;
+  login: (provider?: string) => Promise<void>;
+  logout: () => Promise<void>;
   autologin: () => void;
   isAuthenticated: () => boolean;
   status: EStatus;
@@ -92,7 +92,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       const code_verifier = localStorage.load('code_verifier');
       if (code && stateLocalStorage && code_verifier && currentProvider) {
         setStatus('LOGGING');
-        retriveToken(code, code_verifier);
+        retriveToken(code, code_verifier).then();
       } else if (isAuthenticated()) {
         setStatus('LOGGED-IN');
       } else if (params.error) {
@@ -133,10 +133,13 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   }, [token]);
 
-  const retriveToken = (code: string, code_verifier: string): Promise<void> => {
+  const retriveToken = async (
+    code: string,
+    code_verifier: string
+  ): Promise<void> => {
     if (currentProvider) {
-      const { client_id, token_endpoint, client_secret, redirect_uri } =
-        currentProvider;
+      const { token_endpoint } = await getWellKnown(currentProvider.issuer);
+      const { client_id, client_secret, redirect_uri } = currentProvider;
       const BASIC_TOKEN = `Basic ${window.btoa(
         `${client_id}:${client_secret}`
       )}`;
@@ -182,9 +185,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   };
 
-  const refreshToken = (): Promise<TokenResponse> => {
+  const refreshToken = async (): Promise<TokenResponse> => {
     if (currentProvider) {
-      const { client_id, token_endpoint, client_secret } = currentProvider;
+      const { client_id, client_secret } = currentProvider;
+      const { token_endpoint } = await getWellKnown(currentProvider.issuer);
       const BASIC_TOKEN = `Basic ${window.btoa(
         `${client_id}:${client_secret}`
       )}`;
@@ -225,18 +229,25 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   };
 
-  const login = (issuer?: string) => {
+  const login = async (issuer?: string) => {
     let provider: ProviderOptions | undefined;
     if (issuer) {
       provider = providers.find(p => p.issuer === issuer);
     } else {
       provider = defaultProvider ?? providers[0];
     }
+
+    if (!provider) {
+      throw new Error('OIDC Provider not found');
+    }
+
     localStorage.clear();
+
+    const { authorization_endpoint } = await getWellKnown(provider.issuer);
+
     if (provider) {
       localStorage.save('provider_issuer', provider.issuer);
       const {
-        authorization_endpoint,
         client_id,
         redirect_uri,
         requested_scopes,
@@ -295,11 +306,14 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     if (currentProvider && token) {
+      const { end_session_endpoint } = await getWellKnown(
+        currentProvider.issuer
+      );
+
       localStorage.clear();
       const {
-        end_session_endpoint,
         redirect_logout_uri,
         redirect_uri,
         kc_idp_hint: initiating_idp,
