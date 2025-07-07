@@ -69,6 +69,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   const [status, setStatus] = useState<AuthCtxType['status']>('INIT');
 
   const [token, setToken] = useState<TokenResponse>();
+  const tokenRef = useRef<TokenResponse | null>(null);
 
   const loading = useMemo(() => status === 'INIT', [status]);
 
@@ -133,6 +134,24 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   }, [token]);
 
+  async function waitNewToken(): Promise<TokenResponse> {
+    return new Promise<TokenResponse>(resolve => {
+      const check = () => {
+        if (tokenRef.current !== null) {
+          resolve(tokenRef.current);
+        } else {
+          setTimeout(check, 500);
+        }
+      };
+      check();
+    });
+  }
+
+  function updateToken(token?: TokenResponse) {
+    tokenRef.current = token === undefined ? null : token;
+    setToken(() => token);
+  }
+
   const retriveToken = async (
     code: string,
     code_verifier: string
@@ -170,7 +189,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           throw new FetchError(res);
         })
         .then(data => {
-          setToken(data);
+          updateToken(data);
           onRoute(localRedirectUri, !!overrideRedirectUri);
         })
         .catch(error => {
@@ -180,7 +199,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           localStorage.clear(['code_verifier', 'redirect_uri', 'state']);
         });
     } else {
-      setToken(undefined);
+      updateToken(undefined);
       throw Error('OIDC Provider not found');
     }
   };
@@ -189,6 +208,16 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     if (currentProvider) {
       const { client_id, client_secret } = currentProvider;
       const { token_endpoint } = await getWellKnown(currentProvider.issuer);
+
+      if (tokenRef.current === null) {
+        const newToken = await waitNewToken();
+        if (newToken) {
+          return newToken;
+        }
+        throw new Error('Error on waiting new token');
+      }
+      tokenRef.current = null;
+
       const BASIC_TOKEN = `Basic ${window.btoa(
         `${client_id}:${client_secret}`
       )}`;
@@ -214,7 +243,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
             throw new FetchError(res);
           })
           .then(data => {
-            setToken(data);
+            updateToken(data);
             resolve(data);
           })
           .catch(error => {
@@ -224,7 +253,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           })
       );
     } else {
-      setToken(undefined);
+      updateToken(undefined);
       throw Error('OIDC Provider not found');
     }
   };
@@ -301,7 +330,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         );
       }
     } else {
-      setToken(undefined);
+      updateToken(undefined);
       throw new Error('OIDC Provider not found');
     }
   };
