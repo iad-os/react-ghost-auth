@@ -68,14 +68,14 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const [status, setStatus] = useState<AuthCtxType['status']>('INIT');
 
-  const [token, setToken] = useState<TokenResponse>();
+  const token = useRef<TokenResponse | null>(null);
   const tokenRef = useRef<TokenResponse | null>(null);
 
   const loading = useMemo(() => status === 'INIT', [status]);
 
   const currentProvider = useMemo<ProviderOptions | undefined>(() => {
     const lsp = localStorage.load('provider_issuer');
-    return providers.find(i => i.issuer === lsp);
+    return providers.find(i => lsp ? i.issuer === lsp : i.defualt);
   }, [status, token]);
 
   const defaultProvider = useMemo<ProviderOptions | undefined>(() => {
@@ -126,13 +126,13 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   });
 
   useEffect(() => {
-    if (token) {
+    if (token.current) {
       saveOnLocalStorage &&
-        localStorage.save('access_token', token.access_token);
-      localStorage.save('logged_in', token.id_token);
+        localStorage.save('access_token', token.current.access_token);
+      localStorage.save('logged_in', token.current.id_token);
       setStatus(() => 'LOGGED-IN');
     }
-  }, [token]);
+  }, [token.current]);
 
   async function waitNewToken(): Promise<TokenResponse> {
     return new Promise<TokenResponse>(resolve => {
@@ -147,9 +147,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     });
   }
 
-  function updateToken(token?: TokenResponse) {
-    tokenRef.current = token === undefined ? null : token;
-    setToken(() => token);
+  function updateToken(newToken?: TokenResponse) {
+    tokenRef.current = newToken === undefined ? null : newToken;
+    token.current = newToken === undefined ? null : newToken;
   }
 
   const retriveToken = async (
@@ -232,7 +232,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
           },
           body: stringfyQueryString({
             grant_type: 'refresh_token',
-            refresh_token: token?.refresh_token,
+            refresh_token: token.current?.refresh_token,
             ...(!client_secret && { client_id }),
           }),
         })
@@ -347,7 +347,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         redirect_uri,
         kc_idp_hint: initiating_idp,
       } = currentProvider;
-      const id_token_hint = token.id_token;
+      const id_token_hint = token.current?.id_token;
       const post_logout_redirect_uri = `${redirect_logout_uri ?? redirect_uri}`;
       const logoutUrl = `${end_session_endpoint}?${stringfyQueryString({
         post_logout_redirect_uri,
@@ -375,7 +375,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         autologin,
         status,
         refreshToken,
-        token,
+        token: token.current ?? undefined,
         currentProvider,
         providers,
       }}
