@@ -21,8 +21,10 @@ export const retriveToken = async (args: {
     .providers.find(p => p.issuer === currentProviderIssuer);
   if (currentProvider) {
     const { token_endpoint } = await getWellKnown(currentProvider.issuer);
-    const { client_id, client_secret, redirect_uri } = currentProvider;
+    const { client_id, client_secret } = currentProvider;
     const BASIC_TOKEN = `Basic ${window.btoa(`${client_id}:${client_secret}`)}`;
+
+    const redirect_uri = sessionStore.get('redirect_uri');
 
     const response = await fetch(token_endpoint, {
       method: 'POST',
