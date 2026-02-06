@@ -209,10 +209,15 @@ export const logout = async () => {
   }
 };
 
+const getToken = (): TokenResponse | undefined => {
+  return store.get('token');
+};
+
 const tokenService = {
   retriveToken,
   refreshToken,
   login,
   logout,
+  getToken,
 };
 export default tokenService;
