@@ -1,5 +1,4 @@
-import { useStore } from 'zustand';
-import { createStore } from 'zustand/vanilla';
+import { useSyncExternalStore } from 'react';
 import { ProviderOptions, TokenResponse } from './models';
 
 type StoreValueMap = {
@@ -7,14 +6,50 @@ type StoreValueMap = {
   token?: TokenResponse;
 };
 
-const store = createStore<StoreValueMap>(() => ({
+type StoreListener = () => void;
+
+let state: StoreValueMap = {
   providers: [],
   token: undefined,
-}));
+};
 
-const useZStore = (selector: (state: StoreValueMap) => any) =>
-  useStore(store, selector);
+const listeners = new Set<StoreListener>();
 
-export { useZStore as useStore };
+function notifyListeners() {
+  listeners.forEach(listener => listener());
+}
 
+function getState(): StoreValueMap {
+  return { ...state };
+}
+
+function setState(partial: Partial<StoreValueMap>) {
+  state = { ...state, ...partial };
+  notifyListeners();
+}
+
+function subscribe(listener: StoreListener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function snapshot(): StoreValueMap {
+  return getState();
+}
+
+function useStore<T>(selector: (state: StoreValueMap) => T): T {
+  return useSyncExternalStore(
+    subscribe,
+    () => selector(getState())
+  );
+}
+
+const store = {
+  getState,
+  setState,
+  subscribe,
+  snapshot,
+};
+
+export { useStore };
 export default store;
