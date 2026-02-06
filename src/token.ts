@@ -60,9 +60,6 @@ export const retriveToken = async (args: {
     const { token_endpoint } = await getWellKnown(currentProvider.issuer);
     const { client_id, client_secret, redirect_uri } = currentProvider;
     const BASIC_TOKEN = `Basic ${window.btoa(`${client_id}:${client_secret}`)}`;
-    const localRedirectUri = decodeURIComponent(
-      localStorage.load('redirect_uri') ?? redirect_uri
-    );
 
     const response = await fetch(token_endpoint, {
       method: 'POST',
@@ -74,7 +71,7 @@ export const retriveToken = async (args: {
       },
       body: stringfyQueryString({
         grant_type: 'authorization_code',
-        redirect_uri: localRedirectUri,
+        redirect_uri,
         code,
         code_verifier,
         ...(!client_secret && { client_id }),
@@ -166,8 +163,6 @@ export const login = async (args: {
     throw new Error('OIDC Provider not found');
   }
 
-  localStorage.clear();
-
   const { authorization_endpoint } = await getWellKnown(provider.issuer);
 
   if (provider) {
@@ -230,7 +225,6 @@ export const logout = async () => {
     const { end_session_endpoint } = await getWellKnown(currentProvider.issuer);
 
     sessionStorage.clear();
-    localStorage.clear();
     clearCurrentProvider();
     clearAllCookies();
     const {

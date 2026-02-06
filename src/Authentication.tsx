@@ -75,11 +75,11 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       onceCall.current = true;
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateLocalStorage = getCookie('state');
+      const stateCookie = getCookie('state');
       const code_verifier = getCookie('code_verifier');
       const currentProvider = getCurrentProvider();
       const token = tokenService.getToken();
-      if (code && stateLocalStorage && code_verifier && currentProvider) {
+      if (code && stateCookie && code_verifier && currentProvider) {
         setStatus('LOGGING');
         retriveToken(code, code_verifier);
       } else if (!!token) {
@@ -100,13 +100,13 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     if (enableLog) {
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateLocalStorage = localStorage.load('state');
-      const code_verifier = localStorage.load('code_verifier');
+      const stateCookie = getCookie('state');
+      const code_verifier = getCookie('code_verifier');
       console.log('*** REACT GHOST AUTH STATUS ***', {
         status,
         currentProvider: getCurrentProvider(),
         code,
-        stateLocalStorage,
+        stateCookie,
         code_verifier,
         token: tokenService.getToken(),
         config,
