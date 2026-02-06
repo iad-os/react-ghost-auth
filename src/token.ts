@@ -227,6 +227,7 @@ async function waitNewToken(): Promise<boolean> {
 const setToken = (token: TokenResponse) => {
   store.setState({ token });
   sessionStorage.setItem('token_status', 'refreshed');
+  sessionStore.reset();
   autoRefreshToken();
 };
 
@@ -237,7 +238,7 @@ function autoRefreshToken() {
   if (expires_in === 0) {
     return;
   }
-  const time_to_refresh = expires_in * 1000 - Date.now() - 30000; // 30 seconds before expiration to avoid race condition
+  const time_to_refresh = expires_in * 1000 - 30000; // 30 seconds before expiration to avoid race condition
   console.log('*** AUTO REFRESH TOKEN ***', {
     time_to_refresh: time_to_refresh + 'ms',
   });

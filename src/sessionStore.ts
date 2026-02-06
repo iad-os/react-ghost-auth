@@ -20,7 +20,9 @@ function removeSessionStore(key: keyof StoreValueMap) {
   sessionStorage.removeItem(key);
 }
 function resetSessionStore() {
-  sessionStorage.clear();
+  Object.keys(sessionStorage).forEach(key => {
+    sessionStorage.removeItem(key);
+  });
 }
 
 const sessionStore = {
