@@ -1,16 +1,6 @@
-import {
-  clearAllCookies,
-  clearCookies,
-  getCookie,
-  setCookie,
-} from './cookie.utils';
 import { FetchError, ProviderOptions, TokenResponse } from './models';
-import {
-  getCurrentProvider as getCurrentProviderFromStore,
-  getProviders,
-  setCurrentProvider as setCurrentProviderInStore,
-} from './providerStore';
 import { getWellKnown } from './services';
+import store from './store';
 import {
   generateRandomString,
   makeid,
@@ -19,43 +9,12 @@ import {
   stringfyQueryString,
 } from './utils';
 
-export function updateToken(token: TokenResponse) {
-  setCookie('token', JSON.stringify(token), {
-    maxAgeSeconds: token.refresh_expires_in,
-    sameSite: 'Strict',
-  });
-}
-
-export function clearToken() {
-  clearCookies('token');
-}
-
-export function getToken() {
-  const cookieToken = getCookie('token');
-  if (cookieToken) {
-    return JSON.parse(cookieToken) as TokenResponse;
-  }
-  return undefined;
-}
-
-export function setCurrentProvider(provider: ProviderOptions) {
-  setCurrentProviderInStore(provider);
-}
-
-export function getCurrentProvider() {
-  return getCurrentProviderFromStore();
-}
-
-export function clearCurrentProvider() {
-  setCurrentProviderInStore(undefined);
-}
-
 export const retriveToken = async (args: {
   code: string;
   code_verifier: string;
 }): Promise<TokenResponse> => {
   const { code, code_verifier } = args;
-  const currentProvider = getCurrentProvider();
+  const currentProvider = store.get('current_provider');
   if (currentProvider) {
     const { token_endpoint } = await getWellKnown(currentProvider.issuer);
     const { client_id, client_secret, redirect_uri } = currentProvider;
@@ -79,7 +38,7 @@ export const retriveToken = async (args: {
     });
     if (response.ok) {
       const data = (await response.json()) as TokenResponse;
-      updateToken(data);
+      store.set('token', data);
       return data;
     } else {
       throw new FetchError(response);
@@ -89,15 +48,15 @@ export const retriveToken = async (args: {
 };
 
 export const refreshToken = async (): Promise<TokenResponse> => {
-  const currentProvider = getCurrentProvider();
-  const token = getToken();
+  const currentProvider = store.get('current_provider');
+  const token = store.get('token');
   if (currentProvider && token) {
     const { client_id, client_secret } = currentProvider;
     const { token_endpoint } = await getWellKnown(currentProvider.issuer);
 
     if (sessionStorage.getItem('token_status') === 'refreshing') {
       const refreshed = await waitNewToken();
-      const newToken = getToken();
+      const newToken = store.get('token');
       if (refreshed && newToken) {
         return newToken;
       }
@@ -123,7 +82,7 @@ export const refreshToken = async (): Promise<TokenResponse> => {
     });
     if (response.ok) {
       const data = (await response.json()) as TokenResponse;
-      updateToken(data);
+      store.set('token', data);
       return data;
     } else {
       throw new FetchError(response);
@@ -152,7 +111,7 @@ export const login = async (args: {
 }) => {
   const { issuer, overrideRedirectUri } = args;
   let provider: ProviderOptions | undefined;
-  const providers = getProviders();
+  const providers = store.get('providers') ?? [];
   if (issuer) {
     provider = providers.find(p => p.issuer === issuer);
   } else {
@@ -166,7 +125,7 @@ export const login = async (args: {
   const { authorization_endpoint } = await getWellKnown(provider.issuer);
 
   if (provider) {
-    setCurrentProvider(provider);
+    store.set('current_provider', provider);
     const {
       client_id,
       redirect_uri,
@@ -179,11 +138,13 @@ export const login = async (args: {
       ? overrideRedirectUri(location)
       : redirect_uri;
 
+    store.set('redirect_uri', localRedirectUri);
+
     if (provider.pkce) {
       const new_code_verifier = generateRandomString();
       const new_state = generateRandomString();
-      setCookie('state', new_state);
-      setCookie('code_verifier', new_code_verifier);
+      store.set('state', new_state);
+      store.set('code_verifier', new_code_verifier);
       pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
         window.location.replace(
           openIdInitialFlowUrl({
@@ -201,8 +162,8 @@ export const login = async (args: {
       });
     } else {
       const new_state = makeid(64);
-      setCookie('state', new_state);
-      setCookie('code_verifier', 'NO_PKCE');
+      store.set('state', new_state);
+      store.set('code_verifier', 'NO_PKCE');
       window.location.replace(
         openIdInitialFlowUrl({
           authorization_endpoint,
@@ -219,14 +180,17 @@ export const login = async (args: {
 };
 
 export const logout = async () => {
-  const currentProvider = getCurrentProvider();
-  const token = getToken();
+  const currentProvider = store.get('current_provider');
+  const token = store.get('token');
   if (currentProvider && token) {
     const { end_session_endpoint } = await getWellKnown(currentProvider.issuer);
 
-    sessionStorage.clear();
-    clearCurrentProvider();
-    clearAllCookies();
+    store.remove('providers');
+    store.remove('current_provider');
+    store.remove('redirect_uri');
+    store.remove('state');
+    store.remove('code_verifier');
+    store.remove('token');
     const {
       redirect_logout_uri,
       redirect_uri,
@@ -246,12 +210,6 @@ export const logout = async () => {
 };
 
 const tokenService = {
-  updateToken,
-  clearToken,
-  getToken,
-  setCurrentProvider,
-  getCurrentProvider,
-  clearCurrentProvider,
   retriveToken,
   refreshToken,
   login,

@@ -1,26 +1,22 @@
 import React, {
+  useCallback,
   useContext,
   useLayoutEffect,
   useMemo,
   useRef,
-  useState
+  useState,
+  useSyncExternalStore
 } from 'react';
-import { clearAllCookies, getCookie } from './cookie.utils';
+import { clearAllCookies } from './cookie.utils';
 import {
   AuthenticationConfig,
   EStatus,
   ProviderOptions,
   TokenResponse
 } from './models';
-import {
-  getCurrentProvider,
-  setProviders
-} from './providerStore';
-import tokenService, { getToken } from './token';
-import {
-  base64decode,
-  parseQueryString
-} from './utils';
+import store from './store';
+import tokenService from './token';
+import { base64decode, parseQueryString } from './utils';
 type AuthCtxType = {
   login: (provider?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -28,6 +24,7 @@ type AuthCtxType = {
   isAuthenticated: () => boolean;
   status: EStatus;
   refreshToken: () => Promise<TokenResponse>;
+  token: TokenResponse | undefined;
   getToken: () => TokenResponse | undefined;
   getCurrentProvider: () => ProviderOptions | undefined;
   providers: AuthenticationConfig['providers'];
@@ -61,8 +58,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const [status, setStatus] = useState<AuthCtxType['status']>('INIT');
 
+  const token = useSyncExternalStore(store.subscribe, () => store.get('token'));
+
   useLayoutEffect(() => {
-    setProviders(providers);
+    store.set('providers', providers);
   }, [providers]);
 
 
@@ -75,10 +74,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       onceCall.current = true;
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateCookie = getCookie('state');
-      const code_verifier = getCookie('code_verifier');
-      const currentProvider = getCurrentProvider();
-      const token = tokenService.getToken();
+      const stateCookie = store.get('state');
+      const code_verifier = store.get('code_verifier');
+      const currentProvider = store.get('current_provider');
+      const token = store.get('token');
       if (code && stateCookie && code_verifier && currentProvider) {
         setStatus('LOGGING');
         retriveToken(code, code_verifier);
@@ -100,15 +99,15 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     if (enableLog) {
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateCookie = getCookie('state');
-      const code_verifier = getCookie('code_verifier');
+      const stateCookie = store.get('state');
+      const code_verifier = store.get('code_verifier');
       console.log('*** REACT GHOST AUTH STATUS ***', {
         status,
-        currentProvider: getCurrentProvider(),
+        currentProvider: store.get('current_provider'),
         code,
         stateCookie,
         code_verifier,
-        token: tokenService.getToken(),
+        token: store.get('token'),
         config,
         loading,
         isAuthenticated: isAuthenticated(),
@@ -117,7 +116,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   });
 
 
-  const retriveToken = async (
+  const retriveToken = useCallback(async (
     code: string,
     code_verifier: string
   ): Promise<TokenResponse> => {
@@ -128,9 +127,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       logout();
       throw error;
     }
-  };
+  }, []);
 
-  const refreshToken = (): Promise<TokenResponse> => {
+  const refreshToken = useCallback((): Promise<TokenResponse> => {
     try {
       return tokenService.refreshToken()
     } catch (error) {
@@ -138,9 +137,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       logout();
       throw error;
     }
-  };
+  }, []);
 
-  const login = async (issuer?: string) => {
+  const login = useCallback(async (issuer?: string) => {
     try {
       return tokenService.login({ issuer, overrideRedirectUri })
     } catch (error) {
@@ -148,15 +147,15 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       clearAllCookies();
       throw error;
     }
-  };
+  }, [overrideRedirectUri]);
 
   const logout = async () => {
     await tokenService.logout();
   };
 
-  const isAuthenticated = (): boolean => {
-    return !!getToken() && status === 'LOGGED-IN';
-  };
+  const isAuthenticated = useCallback(() => {
+    return !!store.get('token') && status === 'LOGGED-IN';
+  }, [status]);
 
   const autologin = () => setStatus(() => 'LOGIN');
 
@@ -169,9 +168,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         autologin,
         status,
         refreshToken,
-        getToken,
-        getCurrentProvider,
+        getToken: () => store.get('token'),
+        getCurrentProvider: () => store.get('current_provider'),
         providers,
+        token,
       }}
     >
       {!loading && children}
@@ -184,17 +184,17 @@ export function useAuthentication() {
 }
 
 export function useToken() {
-  const { isAuthenticated, refreshToken, getToken } = useAuthentication();
-  if (!isAuthenticated() || !getToken()) {
+  const { isAuthenticated, refreshToken, token, getToken } = useAuthentication();
+  if (!isAuthenticated() || !token) {
     throw new Error('User not authenticated!');
   }
-  return { getToken, refreshToken };
+  return { token, refreshToken, getToken };
 }
 
 export function useUserInfo<T = any>(): T {
-  const { isAuthenticated, getToken } = useAuthentication();
+  const { isAuthenticated, token } = useAuthentication();
 
-  const idToken = useMemo(() => getToken()?.id_token, [getToken]);
+  const idToken = useMemo(() => token?.id_token, [token]);
 
   if (!isAuthenticated() || !idToken) {
     throw new Error('User not authenticated!');

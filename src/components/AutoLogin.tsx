@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthentication } from '../Authentication';
-import { getCookie } from '../cookie.utils';
-import { getCurrentProvider } from '../providerStore';
+import store from '../store';
 
 type AutoLoginProps = {
   children?: React.ReactNode;
@@ -15,8 +14,8 @@ function AutoLogin(props: AutoLoginProps) {
   const { login, isAuthenticated, status } = useAuthentication();
 
   useEffect(() => {
-    const loggedIn = getCookie('token');
-    const provider = getCurrentProvider();
+    const loggedIn = store.get('token');
+    const provider = store.get('current_provider');
 
     if (status === 'LOGGED-OUT' && loggedIn && provider && !isAuthenticated()) {
       // se trovo un utente che si è già connesso e il relativo issuer
