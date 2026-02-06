@@ -18,7 +18,7 @@ type StoreValueMap = {
   code_verifier?: string;
 };
 
-const COOKIE_KEYS = new Set<StoreKey>(['token', 'state', 'code_verifier']);
+const COOKIE_KEYS = new Set<StoreKey>(['token']);
 
 type StoreListener = () => void;
 const storeListeners = new Set<StoreListener>();
