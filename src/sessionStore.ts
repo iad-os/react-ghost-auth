@@ -25,11 +25,17 @@ function resetSessionStore() {
   });
 }
 
+function postLoginReset() {
+  sessionStorage.removeItem('state');
+  sessionStorage.removeItem('code_verifier');
+}
+
 const sessionStore = {
   set: setSessionStore,
   get: getSessionStore,
   remove: removeSessionStore,
   reset: resetSessionStore,
+  postLoginReset: postLoginReset,
 };
 
 export default sessionStore;

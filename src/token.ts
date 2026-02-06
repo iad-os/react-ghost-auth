@@ -227,7 +227,7 @@ async function waitNewToken(): Promise<boolean> {
 const setToken = (token: TokenResponse) => {
   store.setState({ token });
   sessionStorage.setItem('token_status', 'refreshed');
-  sessionStore.reset();
+  sessionStore.postLoginReset();
   autoRefreshToken();
 };
 
