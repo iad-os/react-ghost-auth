@@ -124,7 +124,15 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     code_verifier: string
   ): Promise<TokenResponse> => {
     try {
-      return tokenService.retriveToken({ code, code_verifier })
+      const token = await tokenService.retriveToken({ code, code_verifier })
+      setStatus('LOGGED-IN');
+      const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+      const currentProvider = store.getState().providers.find(p => p.issuer === currentProviderIssuer);
+      setTimeout(() => {
+        const redirectUri = overrideRedirectUri ? overrideRedirectUri(location) : currentProvider?.redirect_uri ?? '';
+        onRoute(redirectUri, !!overrideRedirectUri);
+      }, 200);
+      return token;
     } catch (error) {
       console.error(error);
       logout();
