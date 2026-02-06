@@ -4,8 +4,7 @@ import React, {
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
-  useSyncExternalStore
+  useState
 } from 'react';
 import { clearAllCookies } from './cookie.utils';
 import {
@@ -14,7 +13,8 @@ import {
   ProviderOptions,
   TokenResponse
 } from './models';
-import store from './store';
+import sessionStore from './sessionStore';
+import store, { useStore } from './store';
 import tokenService from './token';
 import { base64decode, parseQueryString } from './utils';
 type AuthCtxType = {
@@ -25,7 +25,6 @@ type AuthCtxType = {
   status: EStatus;
   refreshToken: () => Promise<TokenResponse>;
   token: TokenResponse | undefined;
-  getToken: () => TokenResponse | undefined;
   getCurrentProvider: () => ProviderOptions | undefined;
   providers: AuthenticationConfig['providers'];
 };
@@ -58,10 +57,11 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
 
   const [status, setStatus] = useState<AuthCtxType['status']>('INIT');
 
-  const token = useSyncExternalStore(store.subscribe, () => store.get('token'));
+  const token = useStore(state => state.token);
+
 
   useLayoutEffect(() => {
-    store.set('providers', providers);
+    store.setState({ providers });
   }, [providers]);
 
 
@@ -74,10 +74,11 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       onceCall.current = true;
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateCookie = store.get('state');
-      const code_verifier = store.get('code_verifier');
-      const currentProvider = store.get('current_provider');
-      const token = store.get('token');
+      const stateCookie = sessionStore.get('state');
+      const code_verifier = sessionStore.get('code_verifier');
+      const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+      const currentProvider = store.getState().providers.find(p => p.issuer === currentProviderIssuer);
+      const token = store.getState().token;
       if (code && stateCookie && code_verifier && currentProvider) {
         setStatus('LOGGING');
         retriveToken(code, code_verifier);
@@ -99,15 +100,17 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     if (enableLog) {
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateCookie = store.get('state');
-      const code_verifier = store.get('code_verifier');
+      const stateCookie = sessionStore.get('state');
+      const code_verifier = sessionStore.get('code_verifier');
+      const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+      const currentProvider = store.getState().providers.find(p => p.issuer === currentProviderIssuer);
       console.log('*** REACT GHOST AUTH STATUS ***', {
         status,
-        currentProvider: store.get('current_provider'),
+        currentProvider: currentProvider,
         code,
         stateCookie,
         code_verifier,
-        token: store.get('token'),
+        token: token,
         config,
         loading,
         isAuthenticated: isAuthenticated(),
@@ -154,7 +157,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   };
 
   const isAuthenticated = useCallback(() => {
-    return !!store.get('token') && status === 'LOGGED-IN';
+    return !!store.getState().token && status === 'LOGGED-IN';
   }, [status]);
 
   const autologin = () => setStatus(() => 'LOGIN');
@@ -168,8 +171,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         autologin,
         status,
         refreshToken,
-        getToken: () => store.get('token'),
-        getCurrentProvider: () => store.get('current_provider'),
+        getCurrentProvider: () => store.getState().providers.find(p => p.issuer === sessionStore.get('current_provider_issuer')),
         providers,
         token,
       }}
@@ -184,11 +186,11 @@ export function useAuthentication() {
 }
 
 export function useToken() {
-  const { isAuthenticated, refreshToken, token, getToken } = useAuthentication();
+  const { isAuthenticated, refreshToken, token } = useAuthentication();
   if (!isAuthenticated() || !token) {
     throw new Error('User not authenticated!');
   }
-  return { token, refreshToken, getToken };
+  return { token, refreshToken };
 }
 
 export function useUserInfo<T = any>(): T {
