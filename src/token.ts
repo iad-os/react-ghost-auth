@@ -44,7 +44,7 @@ export const retriveToken = async (args: {
     });
     if (response.ok) {
       const data = (await response.json()) as TokenResponse;
-      store.setState({ token: data });
+      setToken(data);
       return data;
     } else {
       throw new FetchError(response);
@@ -92,28 +92,18 @@ export const refreshToken = async (): Promise<TokenResponse> => {
     });
     if (response.ok) {
       const data = (await response.json()) as TokenResponse;
-      store.setState({ token: data });
+      setToken(data);
+      sessionStorage.setItem('token_status', 'refreshed');
       return data;
     } else {
+      logout();
       throw new FetchError(response);
     }
   } else {
+    logout();
     throw Error('OIDC Provider not found');
   }
 };
-
-async function waitNewToken(): Promise<boolean> {
-  return new Promise<boolean>(resolve => {
-    const check = () => {
-      if (sessionStorage.getItem('token_status') === 'refreshed') {
-        resolve(true);
-      } else {
-        setTimeout(check, 500);
-      }
-    };
-    check();
-  });
-}
 
 export const login = async (args: {
   issuer?: string;
@@ -220,6 +210,39 @@ export const logout = async () => {
 const getToken = (): TokenResponse | undefined => {
   return store.getState().token;
 };
+
+async function waitNewToken(): Promise<boolean> {
+  return new Promise<boolean>(resolve => {
+    const check = () => {
+      if (sessionStorage.getItem('token_status') === 'refreshed') {
+        resolve(true);
+      } else {
+        setTimeout(check, 500);
+      }
+    };
+    check();
+  });
+}
+
+const setToken = (token: TokenResponse) => {
+  store.setState({ token });
+  sessionStorage.setItem('token_status', 'refreshed');
+  autoRefreshToken();
+};
+
+function autoRefreshToken() {
+  const token = getToken();
+  const expires_in = token?.expires_in ?? 0;
+
+  if (expires_in === 0) {
+    return;
+  }
+  const time_to_refresh = expires_in * 1000 - Date.now() - 30000; // 30 seconds before expiration to avoid race condition
+  console.log('*** AUTO REFRESH TOKEN ***', {
+    time_to_refresh: time_to_refresh + 'ms',
+  });
+  setTimeout(refreshToken, time_to_refresh);
+}
 
 const tokenService = {
   retriveToken,
