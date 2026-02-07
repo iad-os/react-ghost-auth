@@ -1,135 +1,309 @@
 # React Ghost Auth
 
-React Ghost Auth is an easy to use multi-provider authentication and authorisation library.
-The library uses the OpenID Connect Flow.
-You simply set your configurations options for all providers to be used, and use them. It's that simple.
+React library for **authentication and authorization** based on **OpenID Connect (OIDC)**. It supports multiple providers (Google, Keycloak, Microsoft, etc.), **Authorization Code** flow with **PKCE**, in-memory token storage, and automatic token refresh.
 
-## Author
-
-👤 **Nicola Vurchio**
-Github: [@nicolavurchio-iad2](https://github.com/nicolavurchio-iad2)
+---
 
 ## Installation
 
 ```bash
-npm i @iad-os/react-ghost-auth
+npm install @iad-os/react-ghost-auth react
 ```
 
-## Playground
+**Peer dependency:** `react` >= 16.14.0
 
-See how the library is used here
-Github: [Ghost Auth Playground](https://github.com/iad-os/ghost-oauth2-playground)
+---
+
+## Configuration
+
+### OIDC Provider
+
+Each provider is a `ProviderOptions` object:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `issuer` | `string` | OIDC issuer URL (e.g. `https://auth.example.com/realms/my-realm`) |
+| `name` | `string` | Provider name (e.g. "Keycloak") |
+| `client_id` | `string` | Application client ID |
+| `client_secret` | `string` | *(optional)* Client secret (for confidential clients) |
+| `redirect_uri` | `string` | Redirect URI after login |
+| `redirect_logout_uri` | `string` | Redirect URI after logout |
+| `requested_scopes` | `string` | Requested scopes (e.g. `openid profile email`) |
+| `pkce` | `boolean` | *(optional)* Use PKCE (recommended for SPAs) |
+| `defualt` | `boolean` | *(optional)* Default provider when `issuer` is not passed |
+| `access_type` | `string` | *(optional)* e.g. `offline` for refresh token |
+| `kc_idp_hint` | `string` | *(optional)* Keycloak identity provider hint |
+
+### App config
+
+```ts
+import type { AuthenticationConfig } from '@iad-os/react-ghost-auth';
+
+const config: AuthenticationConfig = {
+  providers: [
+    {
+      issuer: 'https://keycloak.example.com/realms/my-realm',
+      name: 'Keycloak',
+      client_id: 'my-app',
+      redirect_uri: 'https://my-app.example.com/callback',
+      redirect_logout_uri: 'https://my-app.example.com',
+      requested_scopes: 'openid profile email',
+      pkce: true,
+      defualt: true,
+    },
+  ],
+};
+```
+
+---
 
 ## Usage
 
-##### 1. Create an authConfig file and setup each provider's configuration options.
+### 1. `AuthenticationProvider`
 
-You can get the provider options from your chosen provider i.e Google, Keycloak, Microsoft etc.
-NOTE: AuthenticationConfig is solely for type checking
+Wrap your app (or the part that uses auth) with the provider and pass the config and callbacks.
 
-```typescript
-import { AuthenticationConfig } from '@iad-os/react-ghost-auth';
-
-export const authConfig: AuthenticationConfig = {
-  providers: {
-    //Options example
-    google: {
-      name: 'google',
-      authorization_endpoint: 'https://accounts.google.com/o/oauth2/auth',
-      token_endpoint: 'https://oauth2.googleapis.com/token',
-      client_id: 'xxxxxxxxxxxxxx.apps.googleusercontent.com',
-      requested_scopes: 'profile email openid',
-      redirect_uri: 'http://localhost:3000/redirect',
-      end_session_endpoint: '',
-      redirect_logout_uri: 'http://localhost:3000',
-      access_type: 'offline',
-      client_secret: 'xxxxxxxxxxxxxxxxxx',
-    },
-
-    keycloak: {
-      //Put options here
-    },
-
-    microsoft: {
-      //Put options here
-    },
-  },
-};
-```
-
-&nbsp;
-
-##### 2. Import the AuthenticationProvider and wrap your App Component
-
-&nbsp;
-
-```typescript
+```tsx
 import AuthenticationProvider from '@iad-os/react-ghost-auth';
 
-<AuthenticationProvider
-  config={authConfig}
-  axios={axios}
-  onRoute={handleRoute}>
-
-    </App> // Your app
-
-</AuthenticationProvider>
-```
-
-&nbsp;
-
-##### 3. Setup login on the UI by importing the useAuthentication hook
-
-This exposes api's that can be found below i.e Public Api's
-
-```typescript
-import { useAuthentication } from '@iad-os/react-ghost-auth';
-
-const Login: React.FC = () => {
-  const { login } = useAuthentication();
-
-  function handleGoogle() {
-    login("google");
-  }
-
-  function handleKeyCloak() {
-    login("keycloak");
-  }
+function App() {
+  const config = { providers: [/* ... */] };
 
   return (
-      <Button onClick={handleGoogle}>
-        Login with Google
-      </Button>
-
-      <Button onClick={handleKeyCloak}>
-        Login with Keycloak
-      </Button>
+    <AuthenticationProvider
+      config={config}
+      onRoute={(route, overrided) => {
+        // Called after login/logout with the URL to use (e.g. for the router)
+        window.history.replaceState({}, '', route);
+      }}
+      onError={(message) => console.error(message)}
+      refreshTokenBeforeExp={60}
+      overrideRedirectUri={(loc) => `${loc.origin}${loc.pathname}`}
+      enableLog={process.env.NODE_ENV === 'development'}
+    >
+      <YourApp />
+    </AuthenticationProvider>
   );
-};
+}
 ```
 
-&nbsp;
+**`AuthenticationProvider` props:**
 
-## Public APIs
+| Prop | Type | Default | Description |
+|------|------|--------|-------------|
+| `config` | `AuthenticationConfig` | **required** | Config with the list of providers |
+| `children` | `ReactNode` | **required** | App content |
+| `onRoute` | `(route, overrided) => void` | **required** | Callback with the route to use after login/logout |
+| `onError` | `(message: string) => void` | optional | Callback for errors (e.g. from provider) |
+| `refreshTokenBeforeExp` | `number` | `0` | Seconds before token expiry to trigger automatic refresh (0 = disabled) |
+| `overrideRedirectUri` | `(location) => string` | optional | Override for `redirect_uri` (e.g. for hash-based SPA) |
+| `enableLog` | `boolean` | `false` | Enable debug logging in console |
 
-The public api's below are returned from the **useAuthentication** hook
-| API | Purpose |
-| ------ | ------ |
-| login(providerName: string) | A function that initaites the login flow by redirecting the user to the chosen provider |
-| logout() | A function that clears the userInfo and tokenInfo and logs the user out of the app |
-| userInfo() | A function that returns the user information provided by the chosen provider |
-| tokenInfo() | A function that returns the access and refresh tokens|
-| isAuthenticated() | A method that returns true if user is authenticated and false otherwise |
-| status: EStatus | A variable that returns the login state which can be 'INIT', 'LOGIN', 'LOGGING' or 'LOGGED' |
-| changeStatus(status: EStatus) | A function that sets the login state i.e status|
-|providerInfo() | A function that returns the selected provider and default provider if one is provided|
+---
 
-## Components
+### 2. Components
 
-The components below can be used as wrappers to trigger preffered behaviour
-| Component | Purpose |
-| ------ | ------ |
-| RequireAuth | A wrapper component that requires user to be authenticated before it's content is exposed|
-| Logging | A wrapper component that exposes its content **while** the log in process is running|
-| Logged | A wrapper component that exposes its content after the log in process is successful|
-| AutoLogin | A wrapper or standalone component that initiates the login process automatically on page/site reload|
+#### `RequireAuth`
+
+Renders children only when the user is authenticated; otherwise renders `loggedOut`. Optionally triggers autologin.
+
+```tsx
+import { RequireAuth } from '@iad-os/react-ghost-auth';
+
+<RequireAuth
+  loggedOut={<div>Please log in</div>}
+  autologin={true}
+>
+  <Dashboard />
+</RequireAuth>
+```
+
+| Prop | Type | Default | Description |
+|------|------|--------|-------------|
+| `children` | `ReactNode` | **required** | Content when logged in |
+| `loggedOut` | `ReactNode` | optional | Content when not logged in |
+| `autologin` | `boolean` | `false` | If `true`, in LOGGED-OUT state calls `autologin()` (starts login flow) |
+
+---
+
+#### `Logged`
+
+Renders one content when logged in and another when not (no redirect, UI only).
+
+```tsx
+import { Logged } from '@iad-os/react-ghost-auth';
+
+<Logged
+  in={<p>Welcome</p>}
+  out={<p>Not authenticated</p>}
+/>
+```
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `in` | `ReactNode` | Content when logged in |
+| `out` | `ReactNode` | optional – Content when not logged in |
+
+---
+
+#### `Logging`
+
+Renders content only during the “logging” phase (return from provider with `code`, token exchange in progress).
+
+```tsx
+import { Logging } from '@iad-os/react-ghost-auth';
+
+<Logging in={<Spinner />} />
+```
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `in` | `ReactNode` | Content shown during token exchange |
+
+---
+
+#### `AutoLogin`
+
+When in LOGGED-OUT state and a “current” provider exists (e.g. from a previous session), calls `login(issuer)`; when status is LOGIN, can render `children` (e.g. “Redirecting to login…” screen).
+
+```tsx
+import { AutoLogin } from '@iad-os/react-ghost-auth';
+
+<AutoLogin>
+  <p>Redirecting to login...</p>
+</AutoLogin>
+```
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `children` | `ReactNode` | optional – Content shown when in LOGIN phase (e.g. redirect message) |
+
+---
+
+### 3. Hooks
+
+#### `useAuthentication()`
+
+Exposes auth state and actions.
+
+```tsx
+import { useAuthentication } from '@iad-os/react-ghost-auth';
+
+function MyComponent() {
+  const {
+    login,           // (issuer?: string) => Promise<void>
+    logout,          // () => Promise<void>
+    autologin,       // () => void – sets status to LOGIN
+    isAuthenticated, // () => boolean
+    status,          // 'INIT' | 'LOGIN' | 'LOGGING' | 'LOGGED-IN' | 'LOGGED-OUT' | 'LOGOUT'
+    refreshToken,    // () => Promise<TokenResponse>
+    token,           // TokenResponse | undefined
+    getCurrentProvider, // () => ProviderOptions | undefined
+    providers,       // ProviderOptions[]
+  } = useAuthentication();
+
+  return (
+    <div>
+      {status === 'LOGGED-IN' ? (
+        <button onClick={logout}>Logout</button>
+      ) : (
+        <button onClick={() => login()}>Login</button>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+#### `useToken()`
+
+Returns `token` and `refreshToken` only when the user is authenticated; otherwise **throws**.
+
+```tsx
+import { useToken } from '@iad-os/react-ghost-auth';
+
+function ProtectedApi() {
+  const { token, refreshToken } = useToken();
+  // token: TokenResponse, refreshToken: () => Promise<TokenResponse>
+  return <div>Access token: {token.access_token.slice(0, 20)}…</div>;
+}
+```
+
+Use it **only** inside a protected tree (e.g. under `RequireAuth` or after checking `isAuthenticated()`).
+
+---
+
+#### `useUserInfo<T>()`
+
+Decodes the `id_token` (JWT) payload and returns it typed. Throws if not authenticated or no `id_token`.
+
+```tsx
+import { useUserInfo } from '@iad-os/react-ghost-auth';
+
+type MyClaims = { sub: string; email?: string; name?: string };
+
+function Profile() {
+  const user = useUserInfo<MyClaims>();
+  return <div>{user.name ?? user.sub}</div>;
+}
+```
+
+---
+
+### 4. `tokenService`
+
+Use when you need to handle login/logout/refresh outside React components (e.g. from services or after mount):
+
+```ts
+import { tokenService } from '@iad-os/react-ghost-auth';
+
+// Login (redirects to provider)
+await tokenService.login({ issuer: 'https://...' });
+await tokenService.login(); // uses default provider
+
+// Logout (redirects to provider end session)
+await tokenService.logout();
+
+// Refresh token
+const newToken = await tokenService.refreshToken();
+
+// Current token (from store)
+const token = tokenService.getToken();
+```
+
+- `login({ issuer?, overrideRedirectUri? })` – starts the OIDC flow.
+- `logout()` – clears state and redirects to provider logout.
+- `refreshToken()` – refreshes the token using the refresh token.
+- `getToken()` – returns the current `TokenResponse` or `undefined`.
+
+The `code`-to-token exchange (after redirect) is handled internally by `AuthenticationProvider` via `tokenService.retriveToken`; you typically do not need to call it yourself.
+
+---
+
+## Exported types
+
+- **`AuthenticationConfig`** – `{ providers: ProviderOptions[] }`
+- **`TokenResponse`** – access_token, refresh_token, id_token, expires_in, etc.
+- **`ProviderOptions`** – see table above.
+
+---
+
+## Flow overview
+
+1. User clicks “Login” → `login()` (or `tokenService.login()`) is called.
+2. The app stores in session `state`, `code_verifier`, `redirect_uri`, `current_provider_issuer` and redirects to the provider’s authorization endpoint.
+3. User authenticates at the provider and is redirected back to your `redirect_uri` with `?code=...&state=...`.
+4. `AuthenticationProvider` detects `code` and `state`, calls `tokenService.retriveToken({ code, code_verifier })`, stores the token in the store, and calls `onRoute`.
+5. If `refreshTokenBeforeExp > 0`, an automatic refresh is scheduled before token expiry after login.
+6. To sign out: `logout()` clears state and redirects to the provider’s end session.
+
+---
+
+## Build
+
+```bash
+npm run build
+```
+
+Output in `dist/` (CommonJS and ESM).

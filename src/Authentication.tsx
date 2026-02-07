@@ -6,7 +6,6 @@ import React, {
   useRef,
   useState
 } from 'react';
-import { clearAllCookies } from './cookie.utils';
 import {
   AuthenticationConfig,
   EStatus,
@@ -34,6 +33,7 @@ const AutenticationContext = React.createContext<AuthCtxType>(
 );
 
 export type AuthorizationProps = {
+  refreshTokenBeforeExp?: number;
   config: AuthenticationConfig;
   children: React.ReactNode;
   overrideRedirectUri?: (location: Location) => string;
@@ -49,37 +49,39 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     onError,
     enableLog = false,
     overrideRedirectUri,
+    refreshTokenBeforeExp = 0,
   } = props;
 
   const { location } = window;
 
-  const { providers } = config;
-
   const [status, setStatus] = useState<AuthCtxType['status']>('INIT');
 
   const token = useStore(state => state.token);
-
-
-  useLayoutEffect(() => {
-    store.setState({ providers });
-  }, [providers]);
-
+  const providers = useStore(state => state.providers);
 
   const loading = useMemo(() => status === 'INIT', [status]);
 
   const onceCall = useRef<boolean>(false);
 
   useLayoutEffect(() => {
+    store.setState({ providers: config.providers });
+  }, [config.providers]);
+
+  useLayoutEffect(() => {
+    store.setState({ refreshTokenBeforeExp });
+  }, [refreshTokenBeforeExp]);
+
+  useLayoutEffect(() => {
     if (!onceCall.current) {
       onceCall.current = true;
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateCookie = sessionStore.get('state');
+      const state = sessionStore.get('state');
       const code_verifier = sessionStore.get('code_verifier');
       const currentProviderIssuer = sessionStore.get('current_provider_issuer');
-      const currentProvider = store.getState().providers.find(p => p.issuer === currentProviderIssuer);
-      const token = store.getState().token;
-      if (code && stateCookie && code_verifier && currentProvider) {
+      const { providers, token } = store.getState();
+      const currentProvider = providers.find(p => p.issuer === currentProviderIssuer);
+      if (code && state && code_verifier && currentProvider) {
         setStatus('LOGGING');
         retriveToken(code, code_verifier);
       } else if (!!token) {
@@ -118,7 +120,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   });
 
-
   const retriveToken = useCallback(async (
     code: string,
     code_verifier: string
@@ -140,35 +141,27 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   }, []);
 
-  const refreshToken = useCallback((): Promise<TokenResponse> => {
-    try {
-      return tokenService.refreshToken()
-    } catch (error) {
-      console.error(error);
-      logout();
-      throw error;
-    }
+  const refreshToken = useCallback(async (): Promise<TokenResponse> => {
+    return await tokenService.refreshToken()
   }, []);
 
   const login = useCallback(async (issuer?: string) => {
-    try {
-      return tokenService.login({ issuer, overrideRedirectUri })
-    } catch (error) {
-      console.error(error);
-      clearAllCookies();
-      throw error;
-    }
+    await tokenService.login({ issuer, overrideRedirectUri })
   }, [overrideRedirectUri]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await tokenService.logout();
-  };
+  }, []);
 
   const isAuthenticated = useCallback(() => {
-    return !!store.getState().token && status === 'LOGGED-IN';
-  }, [status]);
+    return !!token && status === 'LOGGED-IN';
+  }, [status, token]);
 
-  const autologin = () => setStatus(() => 'LOGIN');
+  const autologin = useCallback(() => setStatus('LOGIN'), []);
+
+  const getCurrentProvider = useCallback(() => {
+    return providers.find(p => p.issuer === sessionStore.get('current_provider_issuer'));
+  }, [providers]);
 
   return (
     <AutenticationContext.Provider
@@ -179,7 +172,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         autologin,
         status,
         refreshToken,
-        getCurrentProvider: () => store.getState().providers.find(p => p.issuer === sessionStore.get('current_provider_issuer')),
+        getCurrentProvider,
         providers,
         token,
       }}

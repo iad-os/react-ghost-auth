@@ -16,9 +16,10 @@ export const retriveToken = async (args: {
 }): Promise<TokenResponse> => {
   const { code, code_verifier } = args;
   const currentProviderIssuer = sessionStore.get('current_provider_issuer');
-  const currentProvider = store
-    .getState()
-    .providers.find(p => p.issuer === currentProviderIssuer);
+  const { providers } = store.getState();
+  const currentProvider = providers.find(
+    p => p.issuer === currentProviderIssuer
+  );
   if (currentProvider) {
     const { token_endpoint } = await getWellKnown(currentProvider.issuer);
     const { client_id, client_secret } = currentProvider;
@@ -54,64 +55,70 @@ export const retriveToken = async (args: {
 };
 
 export const refreshToken = async (): Promise<TokenResponse> => {
-  const currentProviderIssuer = sessionStore.get('current_provider_issuer');
-  const token = store.getState().token;
-  const currentProvider = store
-    .getState()
-    .providers.find(p => p.issuer === currentProviderIssuer);
+  try {
+    const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+    const { token, providers } = store.getState();
+    const currentProvider = providers.find(
+      p => p.issuer === currentProviderIssuer
+    );
 
-  if (currentProvider && token) {
-    const { client_id, client_secret } = currentProvider;
-    const { token_endpoint } = await getWellKnown(currentProvider.issuer);
+    if (currentProvider && token) {
+      const { client_id, client_secret } = currentProvider;
+      const { token_endpoint } = await getWellKnown(currentProvider.issuer);
 
-    if (sessionStorage.getItem('token_status') === 'refreshing') {
-      const refreshed = await waitNewToken();
-      const newToken = store.getState().token;
-      if (refreshed && newToken) {
-        return newToken;
+      if (sessionStorage.getItem('token_status') === 'refreshing') {
+        const refreshed = await waitNewToken();
+        const newToken = store.getState().token;
+        if (refreshed && newToken) {
+          return newToken;
+        }
+        throw new Error('Error on waiting new token');
       }
-      throw new Error('Error on waiting new token');
-    }
-    sessionStorage.setItem('token_status', 'refreshing');
+      sessionStorage.setItem('token_status', 'refreshing');
 
-    const BASIC_TOKEN = `Basic ${window.btoa(`${client_id}:${client_secret}`)}`;
+      const BASIC_TOKEN = `Basic ${window.btoa(
+        `${client_id}:${client_secret}`
+      )}`;
 
-    const response = await fetch(token_endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        ...(client_secret && {
-          Authorization: BASIC_TOKEN,
+      const response = await fetch(token_endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          ...(client_secret && {
+            Authorization: BASIC_TOKEN,
+          }),
+        },
+        body: stringfyQueryString({
+          grant_type: 'refresh_token',
+          refresh_token: token.refresh_token,
+          ...(!client_secret && { client_id }),
         }),
-      },
-      body: stringfyQueryString({
-        grant_type: 'refresh_token',
-        refresh_token: token.refresh_token,
-        ...(!client_secret && { client_id }),
-      }),
-    });
-    if (response.ok) {
-      const data = (await response.json()) as TokenResponse;
-      setToken(data);
-      sessionStorage.setItem('token_status', 'refreshed');
-      return data;
+      });
+      if (response.ok) {
+        const data = (await response.json()) as TokenResponse;
+        setToken(data);
+        sessionStorage.setItem('token_status', 'refreshed');
+        return data;
+      } else {
+        throw new FetchError(response);
+      }
     } else {
-      logout();
-      throw new FetchError(response);
+      throw Error('OIDC Provider not found');
     }
-  } else {
+  } catch (error) {
+    console.error(error);
     logout();
-    throw Error('OIDC Provider not found');
+    throw error;
   }
 };
 
-export const login = async (args: {
+export const login = async (args?: {
   issuer?: string;
   overrideRedirectUri?: (location: Location) => string;
 }) => {
-  const { issuer, overrideRedirectUri } = args;
+  const { issuer, overrideRedirectUri } = args ?? {};
   let provider: ProviderOptions | undefined;
-  const providers = store.getState().providers ?? [];
+  const { providers } = store.getState();
   if (issuer) {
     provider = providers.find(p => p.issuer === issuer);
   } else {
@@ -181,10 +188,10 @@ export const login = async (args: {
 
 export const logout = async () => {
   const currentProviderIssuer = sessionStore.get('current_provider_issuer');
-  const token = store.getState().token;
-  const currentProvider = store
-    .getState()
-    .providers.find(p => p.issuer === currentProviderIssuer);
+  const { token, providers } = store.getState();
+  const currentProvider = providers.find(
+    p => p.issuer === currentProviderIssuer
+  );
   if (currentProvider && token) {
     const { end_session_endpoint } = await getWellKnown(currentProvider.issuer);
 
@@ -231,19 +238,31 @@ const setToken = (token: TokenResponse) => {
   autoRefreshToken();
 };
 
-function autoRefreshToken() {
-  const token = getToken();
-  const expires_in = token?.expires_in ?? 0;
+const scheduleTokenRefresh = () => {
+  let tokenRefreshTimeout: number | undefined;
+  return () => {
+    const token = getToken();
+    const refreshTokenBeforeExp = store.getState().refreshTokenBeforeExp;
+    const expires_in = token?.expires_in ?? 0;
 
-  if (expires_in === 0) {
-    return;
-  }
-  const time_to_refresh = expires_in * 1000 - 30000; // 30 seconds before expiration to avoid race condition
-  console.log('*** AUTO REFRESH TOKEN ***', {
-    time_to_refresh: time_to_refresh + 'ms',
-  });
-  setTimeout(refreshToken, time_to_refresh);
-}
+    if (
+      expires_in === 0 ||
+      refreshTokenBeforeExp === 0 ||
+      refreshTokenBeforeExp >= expires_in
+    ) {
+      return;
+    }
+
+    if (tokenRefreshTimeout) {
+      clearTimeout(tokenRefreshTimeout);
+      tokenRefreshTimeout = undefined;
+    }
+    const time_to_refresh = (expires_in - refreshTokenBeforeExp) * 1000;
+    tokenRefreshTimeout = setTimeout(refreshToken, time_to_refresh);
+  };
+};
+
+const autoRefreshToken = scheduleTokenRefresh();
 
 const tokenService = {
   retriveToken,
