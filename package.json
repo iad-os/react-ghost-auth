@@ -48,8 +48,7 @@
     "url": "https://github.com/iad-os/react-ghost-auth.git"
   },
   "dependencies": {
-    "lodash.omitby": "^4.6.0",
-    "zustand": "^5.0.11"
+    "lodash.omitby": "^4.6.0"
   },
   "engines": {
     "npm": ">=8.0.0",
