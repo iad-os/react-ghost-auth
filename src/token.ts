@@ -218,6 +218,13 @@ const getToken = (): TokenResponse | undefined => {
   return store.getState().token;
 };
 
+const getBearerToken = (): string | undefined => {
+  const token = getToken();
+  return token
+    ? `${token.token_type ?? 'Bearer'} ${token.access_token}`
+    : undefined;
+};
+
 async function waitNewToken(): Promise<boolean> {
   return new Promise<boolean>(resolve => {
     const check = () => {
@@ -270,5 +277,6 @@ const tokenService = {
   login,
   logout,
   getToken,
+  getBearerToken,
 };
 export default tokenService;
