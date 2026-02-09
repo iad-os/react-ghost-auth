@@ -1,29 +1,21 @@
 import React, {
+  useCallback,
   useContext,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
+  useState
 } from 'react';
 import {
   AuthenticationConfig,
   EStatus,
-  FetchError,
   ProviderOptions,
-  TokenResponse,
+  TokenResponse
 } from './models';
-import {
-  base64decode,
-  generateRandomString,
-  makeid,
-  openIdInitialFlowUrl,
-  parseQueryString,
-  pkceChallengeFromVerifier,
-  stringfyQueryString,
-} from './utils';
-import useLocalstorage from './useLocalstorage';
-import { getWellKnown } from './services';
+import sessionStore from './sessionStore';
+import store, { useStore } from './store';
+import tokenService from './token';
+import { base64decode, parseQueryString } from './utils';
 type AuthCtxType = {
   login: (provider?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -31,9 +23,9 @@ type AuthCtxType = {
   isAuthenticated: () => boolean;
   status: EStatus;
   refreshToken: () => Promise<TokenResponse>;
-  token?: TokenResponse;
+  token: TokenResponse | undefined;
+  getCurrentProvider: () => ProviderOptions | undefined;
   providers: AuthenticationConfig['providers'];
-  currentProvider?: ProviderOptions;
 };
 
 const AutenticationContext = React.createContext<AuthCtxType>(
@@ -41,11 +33,11 @@ const AutenticationContext = React.createContext<AuthCtxType>(
 );
 
 export type AuthorizationProps = {
+  refreshTokenBeforeExp?: number;
   config: AuthenticationConfig;
   children: React.ReactNode;
   overrideRedirectUri?: (location: Location) => string;
   onRoute: (route: string, overrided: boolean) => void;
-  saveOnLocalStorage?: boolean;
   onError?: (message: string) => void;
   enableLog?: boolean;
 };
@@ -54,48 +46,50 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     config,
     children,
     onRoute,
-    saveOnLocalStorage = false,
     onError,
     enableLog = false,
     overrideRedirectUri,
+    refreshTokenBeforeExp = 0,
   } = props;
 
   const { location } = window;
 
-  const { providers } = config;
-
-  const localStorage = useLocalstorage();
-
   const [status, setStatus] = useState<AuthCtxType['status']>('INIT');
 
-  const token = useRef<TokenResponse | null>(null);
-  const tokenRef = useRef<TokenResponse | null>(null);
+  const token = useStore(state => state.token);
+  const providers = useStore(state => state.providers);
 
   const loading = useMemo(() => status === 'INIT', [status]);
 
-  const currentProvider = useMemo<ProviderOptions | undefined>(() => {
-    const lsp = localStorage.load('provider_issuer');
-    return providers.find(i => lsp ? i.issuer === lsp : i.defualt);
-  }, [status, token]);
-
-  const defaultProvider = useMemo<ProviderOptions | undefined>(() => {
-    return providers.find(i => i.defualt);
-  }, []);
-
   const onceCall = useRef<boolean>(false);
+
+  useLayoutEffect(() => {
+    store.setState({ providers: config.providers });
+  }, [config.providers]);
+
+  useLayoutEffect(() => {
+    store.setState({ refreshTokenBeforeExp });
+  }, [refreshTokenBeforeExp]);
 
   useLayoutEffect(() => {
     if (!onceCall.current) {
       onceCall.current = true;
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateLocalStorage = localStorage.load('state');
-      const code_verifier = localStorage.load('code_verifier');
-      if (code && stateLocalStorage && code_verifier && currentProvider) {
+      const state = sessionStore.get('state');
+      const code_verifier = sessionStore.get('code_verifier');
+      const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+      const { providers, token } = store.getState();
+      const currentProvider = providers.find(p => p.issuer === currentProviderIssuer);
+      if (code && state && code_verifier && currentProvider) {
         setStatus('LOGGING');
         retriveToken(code, code_verifier);
-      } else if (isAuthenticated()) {
+      } else if (!!token) {
         setStatus('LOGGED-IN');
+        setTimeout(() => {
+          const redirectUri = overrideRedirectUri ? overrideRedirectUri(location) : currentProvider?.redirect_uri ?? '';
+          onRoute(redirectUri, !!overrideRedirectUri);
+        }, 200);
       } else if (params.error) {
         onError && onError(params.error_description);
       } else {
@@ -108,263 +102,66 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     if (enableLog) {
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateLocalStorage = localStorage.load('state');
-      const code_verifier = localStorage.load('code_verifier');
+      const stateCookie = sessionStore.get('state');
+      const code_verifier = sessionStore.get('code_verifier');
+      const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+      const currentProvider = store.getState().providers.find(p => p.issuer === currentProviderIssuer);
       console.log('*** REACT GHOST AUTH STATUS ***', {
         status,
         currentProvider: currentProvider,
         code,
-        stateLocalStorage,
+        stateCookie,
         code_verifier,
-        lsToken: saveOnLocalStorage,
+        token: token,
         config,
         loading,
-        token,
         isAuthenticated: isAuthenticated(),
       });
     }
   });
 
-  useEffect(() => {
-    if (token.current) {
-      saveOnLocalStorage &&
-        localStorage.save('access_token', token.current.access_token);
-      localStorage.save('logged_in', token.current.id_token);
-      setStatus(() => 'LOGGED-IN');
-    }
-  }, [token.current]);
-
-  async function waitNewToken(): Promise<TokenResponse> {
-    return new Promise<TokenResponse>(resolve => {
-      const check = () => {
-        if (tokenRef.current !== null) {
-          resolve(tokenRef.current);
-        } else {
-          setTimeout(check, 500);
-        }
-      };
-      check();
-    });
-  }
-
-  function updateToken(newToken?: TokenResponse) {
-    tokenRef.current = newToken === undefined ? null : newToken;
-    token.current = newToken === undefined ? null : newToken;
-  }
-
-  const retriveToken = async (
+  const retriveToken = useCallback(async (
     code: string,
     code_verifier: string
-  ): Promise<void> => {
-    if (currentProvider) {
-      const { token_endpoint } = await getWellKnown(currentProvider.issuer);
-      const { client_id, client_secret, redirect_uri } = currentProvider;
-      const BASIC_TOKEN = `Basic ${window.btoa(
-        `${client_id}:${client_secret}`
-      )}`;
-      const localRedirectUri = decodeURIComponent(
-        localStorage.load('redirect_uri') ?? redirect_uri
-      );
-
-      return fetch(token_endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          ...(client_secret && {
-            Authorization: BASIC_TOKEN,
-          }),
-        },
-        body: stringfyQueryString({
-          grant_type: 'authorization_code',
-          redirect_uri: localRedirectUri,
-          code,
-          code_verifier,
-          ...(!client_secret && { client_id }),
-        }),
-      })
-        .then(res => {
-          if (res.ok) {
-            return res.json() as Promise<TokenResponse>;
-          }
-          throw new FetchError(res);
-        })
-        .then(data => {
-          updateToken(data);
-          onRoute(localRedirectUri, !!overrideRedirectUri);
-        })
-        .catch(error => {
-          console.error(error);
-        })
-        .finally(() => {
-          localStorage.clear(['code_verifier', 'redirect_uri', 'state']);
-        });
-    } else {
-      updateToken(undefined);
-      throw Error('OIDC Provider not found');
+  ): Promise<TokenResponse> => {
+    try {
+      const token = await tokenService.retriveToken({ code, code_verifier })
+      setStatus('LOGGED-IN');
+      const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+      const currentProvider = store.getState().providers.find(p => p.issuer === currentProviderIssuer);
+      setTimeout(() => {
+        const redirectUri = overrideRedirectUri ? overrideRedirectUri(location) : currentProvider?.redirect_uri ?? '';
+        onRoute(redirectUri, !!overrideRedirectUri);
+      }, 200);
+      return token;
+    } catch (error) {
+      console.error(error);
+      logout();
+      throw error;
     }
-  };
+  }, []);
 
-  const refreshToken = async (): Promise<TokenResponse> => {
-    if (currentProvider) {
-      const { client_id, client_secret } = currentProvider;
-      const { token_endpoint } = await getWellKnown(currentProvider.issuer);
+  const refreshToken = useCallback(async (): Promise<TokenResponse> => {
+    return await tokenService.refreshToken()
+  }, []);
 
-      if (tokenRef.current === null) {
-        const newToken = await waitNewToken();
-        if (newToken) {
-          return newToken;
-        }
-        throw new Error('Error on waiting new token');
-      }
-      tokenRef.current = null;
+  const login = useCallback(async (issuer?: string) => {
+    await tokenService.login({ issuer, overrideRedirectUri })
+  }, [overrideRedirectUri]);
 
-      const BASIC_TOKEN = `Basic ${window.btoa(
-        `${client_id}:${client_secret}`
-      )}`;
-      return new Promise<TokenResponse>((resolve, reject) =>
-        fetch(token_endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            ...(client_secret && {
-              Authorization: BASIC_TOKEN,
-            }),
-          },
-          body: stringfyQueryString({
-            grant_type: 'refresh_token',
-            refresh_token: token.current?.refresh_token,
-            ...(!client_secret && { client_id }),
-          }),
-        })
-          .then(res => {
-            if (res.ok) {
-              return res.json() as Promise<TokenResponse>;
-            }
-            throw new FetchError(res);
-          })
-          .then(data => {
-            updateToken(data);
-            resolve(data);
-          })
-          .catch(error => {
-            reject(error);
-            console.error(error);
-            logout();
-          })
-      );
-    } else {
-      updateToken(undefined);
-      throw Error('OIDC Provider not found');
-    }
-  };
+  const logout = useCallback(async () => {
+    await tokenService.logout();
+  }, []);
 
-  const login = async (issuer?: string) => {
-    let provider: ProviderOptions | undefined;
-    if (issuer) {
-      provider = providers.find(p => p.issuer === issuer);
-    } else {
-      provider = defaultProvider ?? providers[0];
-    }
-
-    if (!provider) {
-      throw new Error('OIDC Provider not found');
-    }
-
-    localStorage.clear();
-
-    const { authorization_endpoint } = await getWellKnown(provider.issuer);
-
-    if (provider) {
-      localStorage.save('provider_issuer', provider.issuer);
-      const {
-        client_id,
-        redirect_uri,
-        requested_scopes,
-        access_type,
-        kc_idp_hint,
-      } = provider;
-
-      localStorage.save(
-        'redirect_uri',
-        overrideRedirectUri ? overrideRedirectUri(location) : redirect_uri
-      );
-
-      if (provider.pkce) {
-        const new_code_verifier = generateRandomString();
-        const new_state = generateRandomString();
-        localStorage.save('state', new_state);
-        localStorage.save('code_verifier', new_code_verifier);
-        pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
-          window.location.replace(
-            openIdInitialFlowUrl({
-              authorization_endpoint,
-              client_id,
-              redirect_uri: overrideRedirectUri
-                ? overrideRedirectUri(location)
-                : redirect_uri,
-              requested_scopes,
-              code_challenge,
-              state: new_state,
-              code_challenge_method: 'S256',
-              access_type,
-              kc_idp_hint,
-            })
-          );
-        });
-      } else {
-        const new_state = makeid(64);
-        localStorage.save('state', new_state);
-        localStorage.save('code_verifier', 'NO_PKCE');
-        window.location.replace(
-          openIdInitialFlowUrl({
-            authorization_endpoint,
-            client_id,
-            redirect_uri: overrideRedirectUri
-              ? overrideRedirectUri(location)
-              : redirect_uri,
-            requested_scopes,
-            state: new_state,
-            access_type,
-            kc_idp_hint,
-          })
-        );
-      }
-    } else {
-      updateToken(undefined);
-      throw new Error('OIDC Provider not found');
-    }
-  };
-
-  const logout = async () => {
-    if (currentProvider && token) {
-      const { end_session_endpoint } = await getWellKnown(
-        currentProvider.issuer
-      );
-
-      localStorage.clear();
-      const {
-        redirect_logout_uri,
-        redirect_uri,
-        kc_idp_hint: initiating_idp,
-      } = currentProvider;
-      const id_token_hint = token.current?.id_token;
-      const post_logout_redirect_uri = `${redirect_logout_uri ?? redirect_uri}`;
-      const logoutUrl = `${end_session_endpoint}?${stringfyQueryString({
-        post_logout_redirect_uri,
-        initiating_idp,
-        id_token_hint,
-      })}`;
-      window.location.href = logoutUrl;
-    } else {
-      throw new Error('OIDC Provider not found');
-    }
-  };
-
-  const isAuthenticated = (): boolean => {
+  const isAuthenticated = useCallback(() => {
     return !!token && status === 'LOGGED-IN';
-  };
+  }, [status, token]);
 
-  const autologin = () => setStatus(() => 'LOGIN');
+  const autologin = useCallback(() => setStatus('LOGIN'), []);
+
+  const getCurrentProvider = useCallback(() => {
+    return providers.find(p => p.issuer === sessionStore.get('current_provider_issuer'));
+  }, [providers]);
 
   return (
     <AutenticationContext.Provider
@@ -375,9 +172,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         autologin,
         status,
         refreshToken,
-        token: token.current ?? undefined,
-        currentProvider,
+        getCurrentProvider,
         providers,
+        token,
       }}
     >
       {!loading && children}
@@ -399,7 +196,8 @@ export function useToken() {
 
 export function useUserInfo<T = any>(): T {
   const { isAuthenticated, token } = useAuthentication();
-  const idToken = token?.id_token;
+
+  const idToken = useMemo(() => token?.id_token, [token]);
 
   if (!isAuthenticated() || !idToken) {
     throw new Error('User not authenticated!');

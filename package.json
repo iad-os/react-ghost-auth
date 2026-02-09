@@ -1,18 +1,10 @@
 {
   "name": "@iad-os/react-ghost-auth",
-  "version": "3.0.5",
+  "version": "3.1.0-rc.10",
   "maintainers": [
-    {
-      "name": "Daniele Fiungo",
-      "email": "daniele.fiungo@iad2.it"
-    },
     {
       "name": "Nicola Vurchio",
       "email": "nicola.vurchio@iad2.it"
-    },
-    {
-      "name": "Irene La Bollita",
-      "email": "irene.labollita@iad2.it"
     }
   ],
   "author": "Nicola Vurchio <nicola.vurchio@iad2.it>",
