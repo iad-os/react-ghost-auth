@@ -1,6 +1,6 @@
 import { FetchError, ProviderOptions, TokenResponse } from './models';
 import { getWellKnown } from './services';
-import sessionStore from './sessionStore';
+import localStore from './localStore';
 import store from './store';
 import {
   generateRandomString,
@@ -15,7 +15,7 @@ export const retriveToken = async (args: {
   code_verifier: string;
 }): Promise<TokenResponse> => {
   const { code, code_verifier } = args;
-  const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+  const currentProviderIssuer = localStore.get('current_provider_issuer');
   const { providers } = store.getState();
   const currentProvider = providers.find(
     p => p.issuer === currentProviderIssuer
@@ -25,7 +25,7 @@ export const retriveToken = async (args: {
     const { client_id, client_secret } = currentProvider;
     const BASIC_TOKEN = `Basic ${window.btoa(`${client_id}:${client_secret}`)}`;
 
-    const redirect_uri = sessionStore.get('redirect_uri');
+    const redirect_uri = localStore.get('redirect_uri');
 
     const response = await fetch(token_endpoint, {
       method: 'POST',
@@ -56,7 +56,7 @@ export const retriveToken = async (args: {
 
 export const refreshToken = async (): Promise<TokenResponse> => {
   try {
-    const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+    const currentProviderIssuer = localStore.get('current_provider_issuer');
     const { token, providers } = store.getState();
     const currentProvider = providers.find(
       p => p.issuer === currentProviderIssuer
@@ -132,7 +132,7 @@ export const login = async (args?: {
   const { authorization_endpoint } = await getWellKnown(provider.issuer);
 
   if (provider) {
-    sessionStore.set('current_provider_issuer', provider.issuer);
+    localStore.set('current_provider_issuer', provider.issuer);
     const {
       client_id,
       redirect_uri,
@@ -145,13 +145,13 @@ export const login = async (args?: {
       ? overrideRedirectUri(location)
       : redirect_uri;
 
-    sessionStore.set('redirect_uri', localRedirectUri);
+    localStore.set('redirect_uri', localRedirectUri);
 
     if (provider.pkce) {
       const new_code_verifier = generateRandomString();
       const new_state = generateRandomString();
-      sessionStore.set('state', new_state);
-      sessionStore.set('code_verifier', new_code_verifier);
+      localStore.set('state', new_state);
+      localStore.set('code_verifier', new_code_verifier);
       pkceChallengeFromVerifier(new_code_verifier).then(code_challenge => {
         window.location.replace(
           openIdInitialFlowUrl({
@@ -169,8 +169,8 @@ export const login = async (args?: {
       });
     } else {
       const new_state = makeid(64);
-      sessionStore.set('state', new_state);
-      sessionStore.set('code_verifier', 'NO_PKCE');
+      localStore.set('state', new_state);
+      localStore.set('code_verifier', 'NO_PKCE');
       window.location.replace(
         openIdInitialFlowUrl({
           authorization_endpoint,
@@ -187,7 +187,7 @@ export const login = async (args?: {
 };
 
 export const logout = async () => {
-  const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+  const currentProviderIssuer = localStore.get('current_provider_issuer');
   const { token, providers } = store.getState();
   const currentProvider = providers.find(
     p => p.issuer === currentProviderIssuer
@@ -207,7 +207,7 @@ export const logout = async () => {
       initiating_idp,
       id_token_hint,
     })}`;
-    sessionStore.reset();
+    localStore.reset();
     window.location.href = logoutUrl;
   } else {
     throw new Error('OIDC Provider not found');
@@ -241,7 +241,7 @@ async function waitNewToken(): Promise<boolean> {
 const setToken = (token: TokenResponse) => {
   store.setState({ token });
   sessionStorage.setItem('token_status', 'refreshed');
-  sessionStore.postLoginReset();
+  localStore.postLoginReset();
   autoRefreshToken();
 };
 

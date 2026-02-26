@@ -12,7 +12,7 @@ import {
   ProviderOptions,
   TokenResponse
 } from './models';
-import sessionStore from './sessionStore';
+import localStore from './localStore';
 import store, { useStore } from './store';
 import tokenService from './token';
 import { base64decode, parseQueryString } from './utils';
@@ -76,9 +76,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       onceCall.current = true;
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const state = sessionStore.get('state');
-      const code_verifier = sessionStore.get('code_verifier');
-      const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+      const state = localStore.get('state');
+      const code_verifier = localStore.get('code_verifier');
+      const currentProviderIssuer = localStore.get('current_provider_issuer');
       const { providers, token } = store.getState();
       const currentProvider = providers.find(p => p.issuer === currentProviderIssuer);
       if (code && state && code_verifier && currentProvider) {
@@ -102,9 +102,9 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     if (enableLog) {
       const params = parseQueryString(window.location.search);
       const code = params.code as string | undefined;
-      const stateCookie = sessionStore.get('state');
-      const code_verifier = sessionStore.get('code_verifier');
-      const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+      const stateCookie = localStore.get('state');
+      const code_verifier = localStore.get('code_verifier');
+      const currentProviderIssuer = localStore.get('current_provider_issuer');
       const currentProvider = store.getState().providers.find(p => p.issuer === currentProviderIssuer);
       console.log('*** REACT GHOST AUTH STATUS ***', {
         status,
@@ -127,7 +127,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     try {
       const token = await tokenService.retriveToken({ code, code_verifier })
       setStatus('LOGGED-IN');
-      const currentProviderIssuer = sessionStore.get('current_provider_issuer');
+      const currentProviderIssuer = localStore.get('current_provider_issuer');
       const currentProvider = store.getState().providers.find(p => p.issuer === currentProviderIssuer);
       setTimeout(() => {
         const redirectUri = overrideRedirectUri ? overrideRedirectUri(location) : currentProvider?.redirect_uri ?? '';
@@ -160,7 +160,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   const autologin = useCallback(() => setStatus('LOGIN'), []);
 
   const getCurrentProvider = useCallback(() => {
-    return providers.find(p => p.issuer === sessionStore.get('current_provider_issuer'));
+    return providers.find(p => p.issuer === localStore.get('current_provider_issuer'));
   }, [providers]);
 
   return (
