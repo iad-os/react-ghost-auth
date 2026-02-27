@@ -85,13 +85,15 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         setStatus('LOGGING');
         retriveToken(code, code_verifier);
       } else if (!!token) {
+        localStore.set('logged_in_provider_issuer', currentProvider?.issuer ?? '');
         setStatus('LOGGED-IN');
         setTimeout(() => {
           const redirectUri = overrideRedirectUri ? overrideRedirectUri(location) : currentProvider?.redirect_uri ?? '';
           onRoute(redirectUri, !!overrideRedirectUri);
         }, 200);
       } else if (params.error) {
-        onError && onError(params.error_description);
+        console.error('*** REACT GHOST AUTH ERROR ***', JSON.stringify(params));
+        onError && onError(params.error_description ?? 'Unknown error');
       } else {
         setStatus('LOGGED-OUT');
       }
@@ -160,7 +162,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   const autologin = useCallback(() => setStatus('LOGIN'), []);
 
   const getCurrentProvider = useCallback(() => {
-    return providers.find(p => p.issuer === localStore.get('current_provider_issuer'));
+    return providers.find(p => p.issuer === localStore.get('logged_in_provider_issuer'));
   }, [providers]);
 
   return (

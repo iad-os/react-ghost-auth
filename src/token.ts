@@ -132,7 +132,6 @@ export const login = async (args?: {
   const { authorization_endpoint } = await getWellKnown(provider.issuer);
 
   if (provider) {
-    localStore.set('current_provider_issuer', provider.issuer);
     const {
       client_id,
       redirect_uri,
@@ -187,12 +186,15 @@ export const login = async (args?: {
 };
 
 export const logout = async () => {
-  const currentProviderIssuer = localStore.get('current_provider_issuer');
+  const currentProviderIssuer =
+    localStore.get('logged_in_provider_issuer') ??
+    localStore.get('current_provider_issuer');
   const { token, providers } = store.getState();
   const currentProvider = providers.find(
     p => p.issuer === currentProviderIssuer
   );
   if (currentProvider && token) {
+    localStore.reset();
     const { end_session_endpoint } = await getWellKnown(currentProvider.issuer);
 
     const {
@@ -207,7 +209,6 @@ export const logout = async () => {
       initiating_idp,
       id_token_hint,
     })}`;
-    localStore.reset();
     window.location.href = logoutUrl;
   } else {
     throw new Error('OIDC Provider not found');

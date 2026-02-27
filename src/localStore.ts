@@ -3,6 +3,7 @@ type StoreValueMap = {
   redirect_uri?: string;
   state?: string;
   code_verifier?: string;
+  logged_in_provider_issuer?: string;
 };
 
 function setLocalStore(
