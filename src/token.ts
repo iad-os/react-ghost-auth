@@ -132,6 +132,7 @@ export const login = async (args?: {
   const { authorization_endpoint } = await getWellKnown(provider.issuer);
 
   if (provider) {
+    localStore.set('current_provider_issuer', provider.issuer);
     const {
       client_id,
       redirect_uri,
