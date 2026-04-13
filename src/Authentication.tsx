@@ -52,8 +52,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     refreshTokenBeforeExp = 0,
   } = props;
 
-  const { location } = window;
-
   const [status, setStatus] = useState<AuthCtxType['status']>('INIT');
 
   const token = useStore(state => state.token);
@@ -70,6 +68,34 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   useLayoutEffect(() => {
     store.setState({ refreshTokenBeforeExp });
   }, [refreshTokenBeforeExp]);
+
+  const getRedirectUri = useCallback((provider?: ProviderOptions) => {
+    return overrideRedirectUri
+      ? overrideRedirectUri(window.location)
+      : provider?.redirect_uri ??
+          `${window.location.pathname}${window.location.hash}`;
+  }, [overrideRedirectUri]);
+
+  const syncBrowserRoute = useCallback((route: string) => {
+    if (!window.location.search) {
+      return;
+    }
+    try {
+      window.history.replaceState(window.history.state, document.title, route);
+    } catch {
+      window.history.replaceState(
+        window.history.state,
+        document.title,
+        `${window.location.pathname}${window.location.hash}`
+      );
+    }
+  }, []);
+
+  const completeAuthRedirect = useCallback((provider?: ProviderOptions) => {
+    const redirectUri = getRedirectUri(provider);
+    syncBrowserRoute(redirectUri);
+    onRoute(redirectUri, !!overrideRedirectUri);
+  }, [getRedirectUri, onRoute, overrideRedirectUri, syncBrowserRoute]);
 
   useLayoutEffect(() => {
     if (!onceCall.current) {
@@ -88,8 +114,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
         localStore.set('logged_in_provider_issuer', currentProvider?.issuer ?? '');
         setStatus('LOGGED-IN');
         setTimeout(() => {
-          const redirectUri = overrideRedirectUri ? overrideRedirectUri(location) : currentProvider?.redirect_uri ?? '';
-          onRoute(redirectUri, !!overrideRedirectUri);
+          completeAuthRedirect(currentProvider);
         }, 200);
       } else if (params.error) {
         console.error('*** REACT GHOST AUTH ERROR ***', JSON.stringify(params));
@@ -122,6 +147,10 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
     }
   });
 
+  const logout = useCallback(async () => {
+    await tokenService.logout();
+  }, []);
+
   const retriveToken = useCallback(async (
     code: string,
     code_verifier: string
@@ -133,8 +162,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       localStore.set('logged_in_provider_issuer', currentProvider?.issuer ?? '');
       setStatus('LOGGED-IN');
       setTimeout(() => {
-        const redirectUri = overrideRedirectUri ? overrideRedirectUri(location) : currentProvider?.redirect_uri ?? '';
-        onRoute(redirectUri, !!overrideRedirectUri);
+        completeAuthRedirect(currentProvider);
       }, 200);
       return token;
     } catch (error) {
@@ -142,7 +170,7 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
       logout();
       throw error;
     }
-  }, []);
+  }, [completeAuthRedirect, logout]);
 
   const refreshToken = useCallback(async (): Promise<TokenResponse> => {
     return await tokenService.refreshToken()
@@ -151,10 +179,6 @@ export default function AuthenticationProvider(props: AuthorizationProps) {
   const login = useCallback(async (issuer?: string) => {
     await tokenService.login({ issuer, overrideRedirectUri })
   }, [overrideRedirectUri]);
-
-  const logout = useCallback(async () => {
-    await tokenService.logout();
-  }, []);
 
   const isAuthenticated = useCallback(() => {
     return !!token && status === 'LOGGED-IN';
